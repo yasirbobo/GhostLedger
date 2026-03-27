@@ -1,7 +1,7 @@
 "use client"
 
 import Link from "next/link"
-import { usePathname } from "next/navigation"
+import { usePathname, useRouter } from "next/navigation"
 import {
   LayoutDashboard,
   Receipt,
@@ -12,6 +12,7 @@ import {
   X,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { useAuth } from "@/components/providers/auth-provider"
 import { cn } from "@/lib/utils"
 import { useState } from "react"
 
@@ -23,7 +24,14 @@ const navItems = [
 
 export function Sidebar() {
   const pathname = usePathname()
+  const router = useRouter()
+  const { user, logout } = useAuth()
   const [mobileOpen, setMobileOpen] = useState(false)
+
+  const handleLogout = async () => {
+    await logout()
+    router.push("/auth")
+  }
 
   return (
     <>
@@ -87,12 +95,25 @@ export function Sidebar() {
 
         {/* Create Group CTA */}
         <div className="border-t border-sidebar-border p-4">
+          <p className="mb-3 truncate text-xs text-sidebar-foreground/70">
+            {user?.email}
+          </p>
           <Link href="/create-group">
             <Button className="w-full gap-2" onClick={() => setMobileOpen(false)}>
               <Users className="h-4 w-4" />
               Create Group
             </Button>
           </Link>
+          <Button
+            variant="ghost"
+            className="mt-2 w-full justify-start text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground"
+            onClick={() => {
+              setMobileOpen(false)
+              void handleLogout()
+            }}
+          >
+            Sign Out
+          </Button>
         </div>
       </aside>
     </>

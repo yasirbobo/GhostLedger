@@ -24,7 +24,7 @@ import type { AddTransactionInput, Member } from "@/lib/types"
 
 interface AddTransactionModalProps {
   members: Member[]
-  onAdd: (transaction: AddTransactionInput) => void
+  onAdd: (transaction: AddTransactionInput) => Promise<unknown>
 }
 
 export function AddTransactionModal({ members, onAdd }: AddTransactionModalProps) {
@@ -35,30 +35,35 @@ export function AddTransactionModal({ members, onAdd }: AddTransactionModalProps
   const [memberId, setMemberId] = useState("")
   const [category, setCategory] = useState("")
   const [isPrivate, setIsPrivate] = useState(false)
+  const [isSubmitting, setIsSubmitting] = useState(false)
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     const member = members.find((m) => m.id === memberId)
     const parsedAmount = Number.parseFloat(amount)
     if (!member || Number.isNaN(parsedAmount) || parsedAmount <= 0) return
 
-    onAdd({
-      description: description.trim(),
-      amount: parsedAmount,
-      type,
-      memberId,
-      memberName: member.name,
-      isPrivate,
-      category: type === "contribution" ? "Contribution" : category,
-    })
+    setIsSubmitting(true)
+    try {
+      await onAdd({
+        description: description.trim(),
+        amount: parsedAmount,
+        type,
+        memberId,
+        memberName: member.name,
+        isPrivate,
+        category: type === "contribution" ? "Contribution" : category,
+      })
 
-    // Reset form
-    setDescription("")
-    setAmount("")
-    setMemberId("")
-    setCategory("")
-    setIsPrivate(false)
-    setOpen(false)
+      setDescription("")
+      setAmount("")
+      setMemberId("")
+      setCategory("")
+      setIsPrivate(false)
+      setOpen(false)
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
   const categories = ["Food", "Software", "Office", "Events", "Travel", "Other"]
@@ -201,6 +206,7 @@ export function AddTransactionModal({ members, onAdd }: AddTransactionModalProps
             <Switch
               checked={isPrivate}
               onCheckedChange={setIsPrivate}
+              disabled={isSubmitting}
               className="data-[state=checked]:bg-primary"
             />
           </div>
@@ -209,6 +215,7 @@ export function AddTransactionModal({ members, onAdd }: AddTransactionModalProps
             type="submit"
             className="w-full bg-primary text-primary-foreground hover:bg-primary/90"
             disabled={
+              isSubmitting ||
               !description.trim() ||
               !amount ||
               Number.parseFloat(amount) <= 0 ||
@@ -216,7 +223,9 @@ export function AddTransactionModal({ members, onAdd }: AddTransactionModalProps
               (type === "expense" && !category)
             }
           >
-            Add {type === "contribution" ? "Contribution" : "Expense"}
+            {isSubmitting
+              ? "Saving..."
+              : `Add ${type === "contribution" ? "Contribution" : "Expense"}`}
           </Button>
         </form>
       </DialogContent>

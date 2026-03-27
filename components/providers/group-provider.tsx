@@ -9,134 +9,152 @@ import {
   useState,
   type ReactNode,
 } from "react"
-import { buildEncryptedValue } from "@/lib/group-analytics"
+import { useAuth } from "@/components/providers/auth-provider"
 import { mockGroup } from "@/lib/mock-data"
-import type { AddTransactionInput, Group, Member, Transaction } from "@/lib/types"
-
-interface CreateGroupInput {
-  name: string
-  memberNames: string[]
-  budgetMonthly: number
-}
+import type { AddTransactionInput, CreateGroupInput, Group } from "@/lib/types"
 
 interface GroupContextValue {
   group: Group
-  createGroup: (input: CreateGroupInput) => void
-  addTransaction: (transaction: AddTransactionInput) => void
+  isLoading: boolean
+  createGroup: (input: CreateGroupInput) => Promise<Group>
+  addTransaction: (transaction: AddTransactionInput) => Promise<Group>
+  deleteTransaction: (transactionId: string) => Promise<Group>
+  refreshGroup: () => Promise<void>
 }
 
-const STORAGE_KEY = "ghost-ledger-group"
+const STORAGE_KEY = "ghost-ledger-active-group-id"
 
 const GroupContext = createContext<GroupContextValue | null>(null)
 
-function getInitials(name: string) {
-  return name
-    .split(" ")
-    .map((part) => part[0]?.toUpperCase() ?? "")
-    .join("")
-    .slice(0, 2)
-}
-
-function buildWalletAddress(index: number) {
-  return `0xTEAM${(index + 1).toString().padStart(4, "0")}SAFE`
-}
-
-function buildMember(name: string, index: number): Member {
-  return {
-    id: `m${Date.now()}-${index}`,
-    name,
-    avatar: getInitials(name),
-    walletAddress: buildWalletAddress(index),
-    contribution: 0,
+async function readGroup(groupId?: string) {
+  const searchParams = new URLSearchParams()
+  if (groupId) {
+    searchParams.set("groupId", groupId)
   }
-}
 
-function withEncryptedValue(transaction: Transaction): Transaction {
-  if (!transaction.isPrivate) return transaction
-
-  return {
-    ...transaction,
-    encryptedValue: buildEncryptedValue(transaction.amount),
+  const response = await fetch(`/api/group?${searchParams.toString()}`)
+  if (!response.ok) {
+    throw new Error("Failed to load group")
   }
+
+  return (await response.json()) as { group: Group }
 }
 
 export function GroupProvider({ children }: { children: ReactNode }) {
+  const { user, isLoading: isAuthLoading } = useAuth()
   const [group, setGroup] = useState<Group>(mockGroup)
-  const [isHydrated, setIsHydrated] = useState(false)
+  const [isLoading, setIsLoading] = useState(true)
+
+  const refreshGroup = useCallback(async () => {
+    const groupId = window.localStorage.getItem(STORAGE_KEY) ?? undefined
+    const { group: nextGroup } = await readGroup(groupId)
+    window.localStorage.setItem(STORAGE_KEY, nextGroup.id)
+    setGroup(nextGroup)
+  }, [])
 
   useEffect(() => {
-    const stored = window.localStorage.getItem(STORAGE_KEY)
-    if (!stored) {
-      setIsHydrated(true)
+    if (isAuthLoading) {
       return
     }
 
-    try {
-      setGroup(JSON.parse(stored) as Group)
-    } catch {
-      window.localStorage.removeItem(STORAGE_KEY)
-    } finally {
-      setIsHydrated(true)
+    if (!user) {
+      setGroup(mockGroup)
+      setIsLoading(false)
+      return
     }
+
+    let isMounted = true
+
+    async function loadGroup() {
+      try {
+        const groupId = window.localStorage.getItem(STORAGE_KEY) ?? undefined
+        const { group: nextGroup } = await readGroup(groupId)
+        if (!isMounted) {
+          return
+        }
+
+        window.localStorage.setItem(STORAGE_KEY, nextGroup.id)
+        setGroup(nextGroup)
+      } catch {
+        window.localStorage.removeItem(STORAGE_KEY)
+      } finally {
+        if (isMounted) {
+          setIsLoading(false)
+        }
+      }
+    }
+
+    void loadGroup()
+
+    return () => {
+      isMounted = false
+    }
+  }, [user, isAuthLoading, refreshGroup])
+
+  const createGroup = useCallback(async (input: CreateGroupInput) => {
+    const response = await fetch("/api/group", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(input),
+    })
+
+    if (!response.ok) {
+      throw new Error("Failed to create group")
+    }
+
+    const { group: nextGroup } = (await response.json()) as { group: Group }
+    window.localStorage.setItem(STORAGE_KEY, nextGroup.id)
+    setGroup(nextGroup)
+    return nextGroup
   }, [])
 
-  useEffect(() => {
-    if (!isHydrated) return
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(group))
-  }, [group, isHydrated])
+  const addTransaction = useCallback(async (transaction: AddTransactionInput) => {
+    const response = await fetch(`/api/group/${group.id}/transactions`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(transaction),
+    })
 
-  const createGroup = useCallback((input: CreateGroupInput) => {
-    const members = input.memberNames.map((memberName, index) =>
-      buildMember(memberName, index)
+    if (!response.ok) {
+      throw new Error("Failed to add transaction")
+    }
+
+    const { group: nextGroup } = (await response.json()) as { group: Group }
+    setGroup(nextGroup)
+    return nextGroup
+  }, [group.id])
+
+  const deleteTransaction = useCallback(async (transactionId: string) => {
+    const response = await fetch(
+      `/api/group/${group.id}/transactions/${transactionId}`,
+      {
+        method: "DELETE",
+      }
     )
 
-    setGroup({
-      id: `g${Date.now()}`,
-      name: input.name,
-      budgetMonthly: input.budgetMonthly,
-      totalBalance: 0,
-      members,
-      transactions: [],
-    })
-  }, [])
+    if (!response.ok) {
+      throw new Error("Failed to delete transaction")
+    }
 
-  const addTransaction = useCallback((transaction: AddTransactionInput) => {
-    setGroup((currentGroup) => {
-      const nextTransaction: Transaction = withEncryptedValue({
-        ...transaction,
-        id: `t${Date.now()}`,
-        date: new Date().toISOString().split("T")[0] ?? "",
-      })
-
-      const members = currentGroup.members.map((member) => {
-        if (member.id !== transaction.memberId) return member
-        if (transaction.type !== "contribution") return member
-
-        return {
-          ...member,
-          contribution: member.contribution + transaction.amount,
-        }
-      })
-
-      return {
-        ...currentGroup,
-        totalBalance:
-          transaction.type === "contribution"
-            ? currentGroup.totalBalance + transaction.amount
-            : currentGroup.totalBalance - transaction.amount,
-        members,
-        transactions: [nextTransaction, ...currentGroup.transactions],
-      }
-    })
-  }, [])
+    const { group: nextGroup } = (await response.json()) as { group: Group }
+    setGroup(nextGroup)
+    return nextGroup
+  }, [group.id])
 
   const value = useMemo(
     () => ({
       group,
+      isLoading,
       createGroup,
       addTransaction,
+      deleteTransaction,
+      refreshGroup,
     }),
-    [group, createGroup, addTransaction]
+    [group, isLoading, createGroup, addTransaction, deleteTransaction, refreshGroup]
   )
 
   return <GroupContext.Provider value={value}>{children}</GroupContext.Provider>

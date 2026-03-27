@@ -1,4 +1,6 @@
 import { NextResponse } from "next/server"
+import { cookies } from "next/headers"
+import { getUserBySession, SESSION_COOKIE_NAME } from "@/lib/auth-store"
 import {
   getInsights,
   getSpendingCategories,
@@ -6,7 +8,13 @@ import {
   getTotalExpenses,
   summarizePrivateSpending,
 } from "@/lib/group-analytics"
+import { getGroup } from "@/lib/group-store"
 import type { Group } from "@/lib/types"
+
+interface OpenAIResponsePayload {
+  id: string
+  output_text?: string
+}
 
 function answerQuestion(question: string, group: Group) {
   const normalizedQuestion = question.toLowerCase()
@@ -72,21 +80,138 @@ function answerQuestion(question: string, group: Group) {
   return `Here is the current financial snapshot for ${group.name}: balance $${group.totalBalance.toLocaleString()}, contributions $${totalContributions.toLocaleString()}, expenses $${totalExpenses.toLocaleString()}. ${defaultInsight}`
 }
 
+function buildLedgerSummary(group: Group) {
+  return {
+    group: {
+      id: group.id,
+      name: group.name,
+      monthlyBudget: group.budgetMonthly,
+      totalBalance: group.totalBalance,
+      ownerEmail: group.ownerEmail ?? null,
+      memberEmails: group.memberEmails ?? [],
+    },
+    members: group.members.map((member) => ({
+      name: member.name,
+      contribution: member.contribution,
+      walletAddress: member.walletAddress,
+    })),
+    totals: {
+      contributions: getTotalContributions(group),
+      expenses: getTotalExpenses(group),
+      privateExpenseSummary: summarizePrivateSpending(group.transactions),
+    },
+    insights: getInsights(group),
+    categories: getSpendingCategories(group),
+    recentTransactions: group.transactions.slice(0, 12).map((transaction) => ({
+      date: transaction.date,
+      description: transaction.description,
+      memberName: transaction.memberName,
+      type: transaction.type,
+      category: transaction.category,
+      amount: transaction.isPrivate
+        ? transaction.encryptedValue ?? "encrypted"
+        : transaction.amount,
+      isPrivate: transaction.isPrivate,
+    })),
+  }
+}
+
+async function generateModelAnswer(input: {
+  question: string
+  group: Group
+  previousResponseId?: string
+}) {
+  const apiKey = process.env.OPENAI_API_KEY
+  if (!apiKey) {
+    return null
+  }
+
+  const response = await fetch("https://api.openai.com/v1/responses", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${apiKey}`,
+    },
+    body: JSON.stringify({
+      model: process.env.OPENAI_MODEL ?? "gpt-5-mini",
+      instructions:
+        "You are GhostLedger's financial analyst. Answer only from the provided ledger snapshot. Be concise, precise, and explicit when data is missing. Do not invent transactions, budgets, or member activity.",
+      previous_response_id: input.previousResponseId,
+      reasoning: {
+        effort: "low",
+      },
+      text: {
+        verbosity: "low",
+      },
+      input: [
+        {
+          role: "user",
+          content: [
+            {
+              type: "input_text",
+              text: `Question: ${input.question}\n\nLedger snapshot:\n${JSON.stringify(buildLedgerSummary(input.group), null, 2)}`,
+            },
+          ],
+        },
+      ],
+    }),
+  })
+
+  if (!response.ok) {
+    throw new Error("OpenAI request failed")
+  }
+
+  const payload = (await response.json()) as OpenAIResponsePayload
+  return {
+    answer: payload.output_text?.trim() || answerQuestion(input.question, input.group),
+    responseId: payload.id,
+  }
+}
+
 export async function POST(request: Request) {
   try {
-    const body = (await request.json()) as { question?: string; group?: Group }
+    const cookieStore = await cookies()
+    const user = await getUserBySession(cookieStore.get(SESSION_COOKIE_NAME)?.value)
+    const body = (await request.json()) as {
+      question?: string
+      groupId?: string
+      previousResponseId?: string
+    }
     const question = body.question?.trim()
-    const group = body.group
 
-    if (!question || !group) {
+    if (!user) {
       return NextResponse.json(
-        { error: "Question and group data are required." },
+        { error: "You must be signed in to use the analyst." },
+        { status: 401 }
+      )
+    }
+
+    if (!question || !body.groupId) {
+      return NextResponse.json(
+        { error: "Question and group id are required." },
         { status: 400 }
       )
     }
 
+    const group = await getGroup(body.groupId, user.email)
+
+    try {
+      const modelResponse = await generateModelAnswer({
+        question,
+        group,
+        previousResponseId: body.previousResponseId,
+      })
+
+      if (modelResponse) {
+        return NextResponse.json(modelResponse)
+      }
+    } catch {
+      // Fall back to deterministic analytics if the model request fails.
+    }
+
     return NextResponse.json({
       answer: answerQuestion(question, group),
+      responseId: null,
     })
   } catch {
     return NextResponse.json(

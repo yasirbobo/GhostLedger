@@ -5,6 +5,7 @@ import { BalanceCard } from "@/components/dashboard/balance-card"
 import { MembersList } from "@/components/dashboard/members-list"
 import { TransactionsList } from "@/components/dashboard/transactions-list"
 import { AddTransactionModal } from "@/components/dashboard/add-transaction-modal"
+import { GroupAccessCard } from "@/components/dashboard/group-access-card"
 import { useGroup } from "@/components/providers/group-provider"
 import { getTotalContributions } from "@/lib/group-analytics"
 
@@ -42,6 +43,12 @@ export default function DashboardPage() {
           <TransactionsList transactions={recentTransactions} />
         </div>
       </div>
+
+      {group.ownerEmail && (
+        <div className="mt-6">
+          <GroupAccessCard />
+        </div>
+      )}
     </AppShell>
   )
 }

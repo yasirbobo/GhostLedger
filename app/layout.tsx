@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import { Analytics } from '@vercel/analytics/next'
+import { AuthProvider } from '@/components/providers/auth-provider'
 import { GroupProvider } from '@/components/providers/group-provider'
 import './globals.css'
 
@@ -34,7 +35,9 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className="font-sans antialiased">
-        <GroupProvider>{children}</GroupProvider>
+        <AuthProvider>
+          <GroupProvider>{children}</GroupProvider>
+        </AuthProvider>
         <Analytics />
       </body>
     </html>

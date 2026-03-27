@@ -1,4 +1,4 @@
-import type { Group, Insight, SpendingCategory, AIMessage } from "./types"
+import type { Group, Insight, SpendingCategory } from "./types"
 import { buildEncryptedValue } from "./group-analytics"
 
 export const mockGroup: Group = {

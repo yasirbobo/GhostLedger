@@ -13,6 +13,7 @@ import {
   Receipt,
   Search,
   Filter,
+  Trash2,
 } from "lucide-react"
 import { useGroup } from "@/components/providers/group-provider"
 import type { Transaction } from "@/lib/types"
@@ -20,7 +21,7 @@ import type { Transaction } from "@/lib/types"
 function formatPrivateAmount(amount: number): string {
   const lowerBound = Math.floor(amount / 50) * 50
   const upperBound = lowerBound + 100
-  return `$${lowerBound}–$${upperBound}`
+  return `$${lowerBound}-$${upperBound}`
 }
 
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
@@ -34,21 +35,19 @@ function formatDate(dateString: string): string {
 export default function TransactionsPage() {
   const [searchQuery, setSearchQuery] = useState("")
   const [filterType, setFilterType] = useState<"all" | "contribution" | "expense">("all")
-  const { group } = useGroup()
+  const { group, deleteTransaction } = useGroup()
 
-  const transactions = group.transactions
-
-  const filteredTransactions = transactions.filter((tx) => {
+  const filteredTransactions = group.transactions.filter((transaction) => {
     const matchesSearch =
-      tx.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      tx.memberName.toLowerCase().includes(searchQuery.toLowerCase())
-    const matchesType = filterType === "all" || tx.type === filterType
+      transaction.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      transaction.memberName.toLowerCase().includes(searchQuery.toLowerCase())
+    const matchesType = filterType === "all" || transaction.type === filterType
+
     return matchesSearch && matchesType
   })
 
   return (
     <AppShell>
-      {/* Header */}
       <div className="mb-6">
         <h1 className="text-2xl font-bold tracking-tight text-foreground lg:text-3xl">
           Transactions
@@ -58,15 +57,14 @@ export default function TransactionsPage() {
         </p>
       </div>
 
-      {/* Filters */}
       <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="relative flex-1 sm:max-w-xs">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             placeholder="Search transactions..."
             value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-9 border-border bg-secondary/50 text-foreground placeholder:text-muted-foreground"
+            onChange={(event) => setSearchQuery(event.target.value)}
+            className="border-border bg-secondary/50 pl-9 text-foreground placeholder:text-muted-foreground"
           />
         </div>
         <div className="flex items-center gap-2">
@@ -91,7 +89,6 @@ export default function TransactionsPage() {
         </div>
       </div>
 
-      {/* Transactions List */}
       <Card className="border-border bg-card">
         <CardHeader className="pb-3">
           <CardTitle className="flex items-center gap-2 text-base font-semibold text-foreground">
@@ -109,7 +106,11 @@ export default function TransactionsPage() {
             </div>
           ) : (
             filteredTransactions.map((transaction) => (
-              <TransactionItem key={transaction.id} transaction={transaction} />
+              <TransactionItem
+                key={transaction.id}
+                transaction={transaction}
+                onDelete={deleteTransaction}
+              />
             ))
           )}
         </CardContent>
@@ -118,7 +119,31 @@ export default function TransactionsPage() {
   )
 }
 
-function TransactionItem({ transaction }: { transaction: Transaction }) {
+function TransactionItem({
+  transaction,
+  onDelete,
+}: {
+  transaction: Transaction
+  onDelete: (transactionId: string) => Promise<unknown>
+}) {
+  const [isDeleting, setIsDeleting] = useState(false)
+
+  const handleDelete = async () => {
+    const confirmed = window.confirm(
+      `Delete "${transaction.description}" from the ledger?`
+    )
+    if (!confirmed) {
+      return
+    }
+
+    setIsDeleting(true)
+    try {
+      await onDelete(transaction.id)
+    } finally {
+      setIsDeleting(false)
+    }
+  }
+
   return (
     <div className="flex items-center justify-between rounded-lg border border-border bg-secondary/30 p-4">
       <div className="flex items-center gap-4">
@@ -153,11 +178,11 @@ function TransactionItem({ transaction }: { transaction: Transaction }) {
           </div>
           <div className="mt-1 flex items-center gap-3">
             <p className="text-xs text-muted-foreground">{transaction.memberName}</p>
-            <span className="text-xs text-muted-foreground">{"•"}</span>
+            <span className="text-xs text-muted-foreground">-</span>
             <p className="text-xs text-muted-foreground">{transaction.category}</p>
             {transaction.isPrivate && (
               <>
-                <span className="text-xs text-muted-foreground">{"•"}</span>
+                <span className="text-xs text-muted-foreground">-</span>
                 <Badge
                   variant="outline"
                   className="h-5 gap-1 border-primary/30 bg-primary/10 px-1.5 text-[10px] font-medium text-primary"
@@ -170,20 +195,33 @@ function TransactionItem({ transaction }: { transaction: Transaction }) {
           </div>
         </div>
       </div>
-      <div className="text-right">
-        <p
-          className={`text-sm font-semibold ${
-            transaction.type === "contribution" ? "text-primary" : "text-destructive"
-          }`}
+      <div className="flex items-center gap-3">
+        <div className="text-right">
+          <p
+            className={`text-sm font-semibold ${
+              transaction.type === "contribution" ? "text-primary" : "text-destructive"
+            }`}
+          >
+            {transaction.type === "contribution" ? "+" : "-"}
+            {transaction.isPrivate
+              ? transaction.encryptedValue ?? formatPrivateAmount(transaction.amount)
+              : `$${transaction.amount.toLocaleString()}`}
+          </p>
+          <p className="text-xs text-muted-foreground">
+            {formatDate(transaction.date)}
+          </p>
+        </div>
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          disabled={isDeleting}
+          onClick={() => void handleDelete()}
+          className="text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
         >
-          {transaction.type === "contribution" ? "+" : "-"}
-          {transaction.isPrivate
-            ? transaction.encryptedValue ?? formatPrivateAmount(transaction.amount)
-            : `$${transaction.amount.toLocaleString()}`}
-        </p>
-        <p className="text-xs text-muted-foreground">
-          {formatDate(transaction.date)}
-        </p>
+          <Trash2 className="h-4 w-4" />
+          <span className="sr-only">Delete transaction</span>
+        </Button>
       </div>
     </div>
   )

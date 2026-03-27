@@ -10,6 +10,7 @@ import {
   getAverageContribution,
   getContributionFairness,
   getInsights,
+  getSettlementPositions,
   getSpendingCategories,
   getTotalContributions,
   getTotalExpenses,
@@ -22,6 +23,7 @@ export default function InsightsPage() {
   const totalExpenses = getTotalExpenses(group)
   const avgContribution = getAverageContribution(group)
   const fairness = getContributionFairness(group)
+  const settlementPositions = getSettlementPositions(group)
   const insights = getInsights(group)
   const categories = getSpendingCategories(group)
 
@@ -117,6 +119,49 @@ export default function InsightsPage() {
         {/* Spending Chart */}
         <SpendingChart categories={categories} />
       </div>
+
+      <Card className="mt-6 border-border bg-card">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base font-semibold text-foreground">
+            Settlement Positions
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          {settlementPositions.map(({ member, netPosition, status, equalExpenseShare }) => (
+            <div
+              key={member.id}
+              className="flex items-center justify-between rounded-lg border border-border bg-secondary/30 p-3"
+            >
+              <div>
+                <p className="text-sm font-medium text-foreground">{member.name}</p>
+                <p className="text-xs text-muted-foreground">
+                  Equal expense share: ${equalExpenseShare.toLocaleString(undefined, { maximumFractionDigits: 2 })}
+                </p>
+              </div>
+              <div className="text-right">
+                <p
+                  className={`text-sm font-semibold ${
+                    netPosition > 0
+                      ? "text-primary"
+                      : netPosition < 0
+                      ? "text-destructive"
+                      : "text-muted-foreground"
+                  }`}
+                >
+                  {status === "settled"
+                    ? "Settled"
+                    : `${status} $${Math.abs(netPosition).toLocaleString(undefined, {
+                        maximumFractionDigits: 2,
+                      })}`}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  Based on equal sharing of current expenses
+                </p>
+              </div>
+            </div>
+          ))}
+        </CardContent>
+      </Card>
 
       {/* Contribution Fairness Analysis */}
       <Card className="mt-6 border-border bg-card">

@@ -49,6 +49,26 @@ export function getContributionFairness(group: Group) {
   })
 }
 
+export function getSettlementPositions(group: Group) {
+  if (group.members.length === 0) {
+    return []
+  }
+
+  const equalExpenseShare = getTotalExpenses(group) / group.members.length
+
+  return group.members.map((member) => {
+    const netPosition = member.contribution - equalExpenseShare
+
+    return {
+      member,
+      equalExpenseShare,
+      netPosition,
+      status:
+        netPosition > 0 ? "is owed" : netPosition < 0 ? "owes" : "settled",
+    }
+  })
+}
+
 export function getSpendingCategories(group: Group): SpendingCategory[] {
   const expenseTotals = group.transactions
     .filter((transaction) => transaction.type === "expense")

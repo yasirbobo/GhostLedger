@@ -10,6 +10,7 @@ import { useGroup } from "@/components/providers/group-provider"
 
 export function AIAnalyst() {
   const { group } = useGroup()
+  const [previousResponseId, setPreviousResponseId] = useState<string | null>(null)
   const [messages, setMessages] = useState<AIMessage[]>([
     {
       id: "initial",
@@ -42,22 +43,24 @@ export function AIAnalyst() {
       },
       body: JSON.stringify({
         question: input,
-        group,
+        groupId: group.id,
+        previousResponseId,
       }),
     })
       .then(async (response) => {
         if (!response.ok) {
           throw new Error("Failed to analyze finances")
         }
-        return response.json() as Promise<{ answer: string }>
+        return response.json() as Promise<{ answer: string; responseId: string | null }>
       })
-      .then(({ answer }) => {
+      .then(({ answer, responseId }) => {
         const assistantMessage: AIMessage = {
           id: (Date.now() + 1).toString(),
           role: "assistant",
           content: answer,
         }
 
+        setPreviousResponseId(responseId)
         setMessages((prev) => [...prev, assistantMessage])
       })
       .catch(() => {

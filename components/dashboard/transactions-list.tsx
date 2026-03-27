@@ -14,13 +14,13 @@ interface TransactionsListProps {
 function formatPrivateAmount(amount: number): string {
   const lowerBound = Math.floor(amount / 50) * 50
   const upperBound = lowerBound + 100
-  return `$${lowerBound}–$${upperBound}`
+  return `$${lowerBound}-$${upperBound}`
 }
 
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
 
 function formatDate(dateString: string): string {
-  const [year, month, day] = dateString.split("-")
+  const [, month, day] = dateString.split("-")
   const monthIndex = parseInt(month, 10) - 1
   return `${MONTHS[monthIndex]} ${parseInt(day, 10)}`
 }
@@ -66,10 +66,10 @@ export function TransactionsList({ transactions, showViewAll = true }: Transacti
                 )}
               </div>
               <div className="min-w-0">
-                <p className="text-sm font-medium text-foreground truncate">
+                <p className="truncate text-sm font-medium text-foreground">
                   {transaction.description}
                 </p>
-                <div className="flex items-center gap-2 mt-0.5">
+                <div className="mt-0.5 flex items-center gap-2">
                   <p className="text-xs text-muted-foreground">
                     {transaction.memberName}
                   </p>

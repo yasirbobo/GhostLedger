@@ -26,6 +26,9 @@ export interface Group {
   totalBalance: number
   members: Member[]
   transactions: Transaction[]
+  ownerEmail?: string
+  memberEmails?: string[]
+  isOwner?: boolean
 }
 
 export interface Insight {
@@ -56,4 +59,16 @@ export interface AddTransactionInput {
   memberName: string
   isPrivate: boolean
   category: string
+}
+
+export interface CreateGroupInput {
+  name: string
+  memberNames: string[]
+  budgetMonthly: number
+}
+
+export interface AuthUser {
+  id: string
+  name: string
+  email: string
 }
