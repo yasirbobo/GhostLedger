@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { Suspense, useState, type FormEvent } from "react"
 import Link from "next/link"
 import { useRouter, useSearchParams } from "next/navigation"
 import { Ghost } from "lucide-react"
@@ -11,7 +11,42 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 
-export default function AuthPage() {
+function AuthPageFallback() {
+  return (
+    <div className="min-h-screen bg-background">
+      <header className="border-b border-border bg-background/80 backdrop-blur-xl">
+        <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-4 lg:px-8">
+          <Link href="/" className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary">
+              <Ghost className="h-5 w-5 text-primary-foreground" />
+            </div>
+            <span className="text-xl font-semibold tracking-tight text-foreground">
+              GhostLedger
+            </span>
+          </Link>
+        </div>
+      </header>
+
+      <main className="mx-auto flex min-h-[calc(100vh-4rem)] max-w-md items-center px-4 py-12">
+        <Card className="w-full border-border bg-card">
+          <CardHeader className="text-center">
+            <CardTitle className="text-2xl font-bold text-foreground">
+              Secure your group access
+            </CardTitle>
+            <p className="text-sm text-muted-foreground">
+              Sign in to create a private ledger or accept access granted by your group owner.
+            </p>
+          </CardHeader>
+          <CardContent>
+            <div className="h-[420px] animate-pulse rounded-md bg-muted/50" />
+          </CardContent>
+        </Card>
+      </main>
+    </div>
+  )
+}
+
+function AuthPageClient() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const nextPath = searchParams.get("next") ?? "/dashboard"
@@ -24,7 +59,7 @@ export default function AuthPage() {
   const [signUpEmail, setSignUpEmail] = useState("")
   const [signUpPassword, setSignUpPassword] = useState("")
 
-  const handleSignIn = async (event: React.FormEvent) => {
+  const handleSignIn = async (event: FormEvent) => {
     event.preventDefault()
     setError(null)
     setIsSubmitting(true)
@@ -42,7 +77,7 @@ export default function AuthPage() {
     }
   }
 
-  const handleSignUp = async (event: React.FormEvent) => {
+  const handleSignUp = async (event: FormEvent) => {
     event.preventDefault()
     setError(null)
     setIsSubmitting(true)
@@ -166,5 +201,13 @@ export default function AuthPage() {
         </Card>
       </main>
     </div>
+  )
+}
+
+export default function AuthPage() {
+  return (
+    <Suspense fallback={<AuthPageFallback />}>
+      <AuthPageClient />
+    </Suspense>
   )
 }
