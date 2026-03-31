@@ -1,9 +1,7 @@
 import { NextResponse } from "next/server"
-import { cookies } from "next/headers"
-import { getUserBySession, SESSION_COOKIE_NAME } from "@/lib/auth-store"
+import { getSessionUser } from "@/lib/auth/get-session-user"
 
 export async function GET() {
-  const cookieStore = await cookies()
-  const user = await getUserBySession(cookieStore.get(SESSION_COOKIE_NAME)?.value)
+  const user = await getSessionUser()
   return NextResponse.json({ user })
 }

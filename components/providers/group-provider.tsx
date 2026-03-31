@@ -17,7 +17,9 @@ interface GroupContextValue {
   group: Group
   isLoading: boolean
   createGroup: (input: CreateGroupInput) => Promise<Group>
+  updateGroup: (input: Pick<CreateGroupInput, "name" | "budgetMonthly">) => Promise<Group>
   addTransaction: (transaction: AddTransactionInput) => Promise<Group>
+  updateTransaction: (transactionId: string, transaction: AddTransactionInput) => Promise<Group>
   deleteTransaction: (transactionId: string) => Promise<Group>
   refreshGroup: () => Promise<void>
 }
@@ -110,6 +112,24 @@ export function GroupProvider({ children }: { children: ReactNode }) {
     return nextGroup
   }, [])
 
+  const updateGroup = useCallback(async (input: Pick<CreateGroupInput, "name" | "budgetMonthly">) => {
+    const response = await fetch(`/api/group/${group.id}`, {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(input),
+    })
+
+    if (!response.ok) {
+      throw new Error("Failed to update group")
+    }
+
+    const { group: nextGroup } = (await response.json()) as { group: Group }
+    setGroup(nextGroup)
+    return nextGroup
+  }, [group.id])
+
   const addTransaction = useCallback(async (transaction: AddTransactionInput) => {
     const response = await fetch(`/api/group/${group.id}/transactions`, {
       method: "POST",
@@ -145,16 +165,39 @@ export function GroupProvider({ children }: { children: ReactNode }) {
     return nextGroup
   }, [group.id])
 
+  const updateTransaction = useCallback(async (
+    transactionId: string,
+    transaction: AddTransactionInput
+  ) => {
+    const response = await fetch(`/api/group/${group.id}/transactions/${transactionId}`, {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(transaction),
+    })
+
+    if (!response.ok) {
+      throw new Error("Failed to update transaction")
+    }
+
+    const { group: nextGroup } = (await response.json()) as { group: Group }
+    setGroup(nextGroup)
+    return nextGroup
+  }, [group.id])
+
   const value = useMemo(
     () => ({
       group,
       isLoading,
       createGroup,
+      updateGroup,
       addTransaction,
+      updateTransaction,
       deleteTransaction,
       refreshGroup,
     }),
-    [group, isLoading, createGroup, addTransaction, deleteTransaction, refreshGroup]
+    [group, isLoading, createGroup, updateGroup, addTransaction, updateTransaction, deleteTransaction, refreshGroup]
   )
 
   return <GroupContext.Provider value={value}>{children}</GroupContext.Provider>

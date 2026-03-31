@@ -1,0 +1,189 @@
+generator client {
+  provider = "prisma-client-js"
+  engineType = "binary"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+enum TransactionType {
+  contribution
+  expense
+}
+
+enum InviteStatus {
+  pending
+  accepted
+  revoked
+  expired
+}
+
+enum RecurringFrequency {
+  weekly
+  monthly
+}
+
+model User {
+  id           String         @id @default(cuid())
+  name         String
+  email        String         @unique
+  passwordHash String
+  passwordSalt String
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+  sessions     Session[]
+  memberships  GroupMember[]
+  ownedGroups  Group[]        @relation("OwnedGroups")
+  invitesSent  GroupInvite[]  @relation("InviteSender")
+  invitesUsed  GroupInvite[]  @relation("InviteRecipient")
+  notificationPreference NotificationPreference?
+}
+
+model Session {
+  id        String   @id @default(cuid())
+  token     String   @unique
+  userId    String
+  createdAt DateTime @default(now())
+  expiresAt DateTime
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+model Group {
+  id            String         @id @default(cuid())
+  name          String
+  budgetMonthly Float          @default(0)
+  totalBalance  Float          @default(0)
+  ownerId       String
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  owner         User           @relation("OwnedGroups", fields: [ownerId], references: [id], onDelete: Cascade)
+  members       GroupMember[]
+  transactions  Transaction[]
+  recurringPlans RecurringTransactionPlan[]
+  invites       GroupInvite[]
+  billingSubscription BillingSubscription?
+
+  @@index([ownerId])
+}
+
+model GroupMember {
+  id            String    @id @default(cuid())
+  groupId       String
+  userId        String?
+  email         String?
+  displayName   String
+  avatar        String
+  walletAddress String
+  contribution  Float     @default(0)
+  role          String    @default("member")
+  joinedAt      DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  group         Group     @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  user          User?     @relation(fields: [userId], references: [id], onDelete: SetNull)
+  transactions  Transaction[]
+  recurringPlans RecurringTransactionPlan[]
+
+  @@index([groupId])
+  @@index([userId])
+  @@unique([groupId, email])
+}
+
+model RecurringTransactionPlan {
+  id             String             @id @default(cuid())
+  groupId        String
+  memberId       String
+  description    String
+  amount         Float
+  type           TransactionType
+  category       String
+  isPrivate      Boolean            @default(false)
+  encryptedValue String?
+  frequency      RecurringFrequency
+  nextRunDate    DateTime
+  active         Boolean            @default(true)
+  createdAt      DateTime           @default(now())
+  updatedAt      DateTime           @updatedAt
+  group          Group              @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  member         GroupMember        @relation(fields: [memberId], references: [id], onDelete: Cascade)
+
+  @@index([groupId, nextRunDate, active])
+  @@index([memberId])
+}
+
+model Transaction {
+  id             String          @id @default(cuid())
+  groupId        String
+  memberId       String
+  description    String
+  amount         Float
+  type           TransactionType
+  category       String
+  isPrivate      Boolean         @default(false)
+  encryptedValue String?
+  transactionAt  DateTime        @default(now())
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+  group          Group           @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  member         GroupMember     @relation(fields: [memberId], references: [id], onDelete: Cascade)
+
+  @@index([groupId, transactionAt])
+  @@index([memberId])
+}
+
+model GroupInvite {
+  id             String       @id @default(cuid())
+  groupId        String
+  email          String
+  token          String       @unique
+  status         InviteStatus @default(pending)
+  role           String       @default("member")
+  invitedById    String
+  acceptedById   String?
+  expiresAt      DateTime
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  group          Group        @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  invitedBy      User         @relation("InviteSender", fields: [invitedById], references: [id], onDelete: Cascade)
+  acceptedBy     User?        @relation("InviteRecipient", fields: [acceptedById], references: [id], onDelete: SetNull)
+
+  @@index([groupId])
+  @@index([email, status])
+}
+
+model NotificationPreference {
+  id                 String   @id @default(cuid())
+  userId             String   @unique
+  monthlySummary     Boolean  @default(true)
+  budgetAlerts       Boolean  @default(true)
+  recurringReminders Boolean  @default(true)
+  inviteUpdates      Boolean  @default(true)
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+  user               User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model BillingSubscription {
+  id          String   @id @default(cuid())
+  groupId      String   @unique
+  plan         String   @default("starter")
+  status       String   @default("trialing")
+  renewalDate  DateTime
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  group        Group    @relation(fields: [groupId], references: [id], onDelete: Cascade)
+}
+
+model EmailOutboxMessage {
+  id         String   @id
+  to         String
+  subject    String
+  body       String
+  createdAt  DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([to])
+}

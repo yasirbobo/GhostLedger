@@ -1,41 +1,50 @@
 import { NextResponse } from "next/server"
 import { cookies } from "next/headers"
-import {
-  authenticateUser,
-  createSession,
-  SESSION_COOKIE_NAME,
-} from "@/lib/auth-store"
-
-const cookieOptions = {
-  httpOnly: true,
-  sameSite: "lax" as const,
-  secure: process.env.NODE_ENV === "production",
-  path: "/",
-}
+import { authenticateUser, createSession } from "@/lib/repositories/auth"
+import { SESSION_COOKIE_NAME, sessionCookieOptions } from "@/lib/auth/session"
+import { logEvent } from "@/lib/observability/logger"
+import { consumeRateLimit, getClientIp } from "@/lib/security/rate-limit"
+import { loginSchema } from "@/lib/validation/auth"
 
 export async function POST(request: Request) {
   try {
-    const body = (await request.json()) as {
-      email?: string
-      password?: string
-    }
-    const email = body.email?.trim() ?? ""
-    const password = body.password ?? ""
+    const clientIp = getClientIp(request)
+    const rateLimit = consumeRateLimit({
+      key: `auth:login:${clientIp}`,
+      limit: 10,
+      windowMs: 60_000,
+    })
 
-    if (!email || !password) {
+    if (!rateLimit.allowed) {
       return NextResponse.json(
-        { error: "Email and password are required." },
+        { error: "Too many sign-in attempts. Please wait a minute and try again." },
+        { status: 429 }
+      )
+    }
+
+    const payload = loginSchema.safeParse(await request.json())
+    if (!payload.success) {
+      return NextResponse.json(
+        { error: payload.error.issues[0]?.message ?? "Invalid sign-in details." },
         { status: 400 }
       )
     }
 
-    const user = await authenticateUser(email, password)
+    const user = await authenticateUser(payload.data.email, payload.data.password)
     const sessionId = await createSession(user.id)
     const cookieStore = await cookies()
-    cookieStore.set(SESSION_COOKIE_NAME, sessionId, cookieOptions)
+    cookieStore.set(SESSION_COOKIE_NAME, sessionId, sessionCookieOptions)
+    logEvent("info", "auth.login.success", {
+      email: user.email,
+      clientIp,
+    })
 
     return NextResponse.json({ user })
   } catch (error) {
+    logEvent("warn", "auth.login.failed", {
+      clientIp: getClientIp(request),
+      message: error instanceof Error ? error.message : "Unable to sign in.",
+    })
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "Unable to sign in." },
       { status: 401 }

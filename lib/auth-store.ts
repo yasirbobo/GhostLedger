@@ -1,7 +1,14 @@
-import { randomBytes, randomUUID, scryptSync, timingSafeEqual } from "node:crypto"
+import { randomUUID } from "node:crypto"
 import { mkdir, readFile, writeFile } from "node:fs/promises"
 import path from "node:path"
-import type { AuthUser } from "@/lib/types"
+import type { AuthUser } from "./types"
+import { getSessionExpiryDate } from "./auth/session"
+import {
+  createPasswordSalt,
+  hashPassword,
+  normalizeEmail,
+  verifyPassword,
+} from "./auth/password"
 
 interface StoredUser extends AuthUser {
   passwordHash: string
@@ -12,6 +19,7 @@ interface StoredSession {
   id: string
   userId: string
   createdAt: string
+  expiresAt: string
 }
 
 interface AuthStore {
@@ -19,9 +27,8 @@ interface AuthStore {
   sessions: StoredSession[]
 }
 
-const DATA_DIR = path.join(process.cwd(), "data")
+const DATA_DIR = process.env.GHOSTLEDGER_DATA_DIR ?? path.join(process.cwd(), "data")
 const STORE_PATH = path.join(DATA_DIR, "auth.json")
-export const SESSION_COOKIE_NAME = "ghost-ledger-session"
 
 function toAuthUser(user: StoredUser): AuthUser {
   return {
@@ -29,14 +36,6 @@ function toAuthUser(user: StoredUser): AuthUser {
     name: user.name,
     email: user.email,
   }
-}
-
-function normalizeEmail(email: string) {
-  return email.trim().toLowerCase()
-}
-
-function hashPassword(password: string, salt: string) {
-  return scryptSync(password, salt, 64).toString("hex")
 }
 
 function buildInitialStore(): AuthStore {
@@ -58,17 +57,23 @@ async function ensureStore() {
 
 async function readStore() {
   await ensureStore()
-  return JSON.parse(await readFile(STORE_PATH, "utf8")) as AuthStore
+  const store = JSON.parse(await readFile(STORE_PATH, "utf8")) as AuthStore
+  const now = Date.now()
+  const activeSessions = store.sessions.filter((session) => {
+    const expiresAt = Date.parse(session.expiresAt ?? session.createdAt)
+    return Number.isNaN(expiresAt) || expiresAt > now
+  })
+
+  if (activeSessions.length !== store.sessions.length) {
+    store.sessions = activeSessions
+    await writeStore(store)
+  }
+
+  return store
 }
 
 async function writeStore(store: AuthStore) {
   await writeFile(STORE_PATH, JSON.stringify(store, null, 2), "utf8")
-}
-
-function verifyPassword(password: string, salt: string, expectedHash: string) {
-  const actualBuffer = Buffer.from(hashPassword(password, salt), "hex")
-  const expectedBuffer = Buffer.from(expectedHash, "hex")
-  return timingSafeEqual(actualBuffer, expectedBuffer)
 }
 
 export function isValidEmail(email: string) {
@@ -87,7 +92,7 @@ export async function createUser(input: {
     throw new Error("An account with this email already exists.")
   }
 
-  const passwordSalt = randomBytes(16).toString("hex")
+  const passwordSalt = createPasswordSalt()
   const user: StoredUser = {
     id: `u-${randomUUID()}`,
     name: input.name.trim(),
@@ -121,6 +126,7 @@ export async function createSession(userId: string) {
     id: sessionId,
     userId,
     createdAt: new Date().toISOString(),
+    expiresAt: getSessionExpiryDate(),
   })
   await writeStore(store)
   return sessionId
@@ -140,6 +146,13 @@ export async function getUserBySession(sessionId?: string | null) {
   const store = await readStore()
   const session = store.sessions.find((entry) => entry.id === sessionId)
   if (!session) {
+    return null
+  }
+
+  const expiresAt = Date.parse(session.expiresAt)
+  if (!Number.isNaN(expiresAt) && expiresAt <= Date.now()) {
+    store.sessions = store.sessions.filter((entry) => entry.id !== sessionId)
+    await writeStore(store)
     return null
   }
 

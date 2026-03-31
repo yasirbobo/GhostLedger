@@ -1,38 +1,31 @@
 import { NextResponse } from "next/server"
-import { cookies } from "next/headers"
-import { getUserBySession, SESSION_COOKIE_NAME } from "@/lib/auth-store"
-import { createGroup, getGroup } from "@/lib/group-store"
-import type { CreateGroupInput } from "@/lib/types"
+import { getSessionUser } from "@/lib/auth/get-session-user"
+import { getErrorMessage, getErrorStatus } from "@/lib/http/errors"
+import {
+  createGroup as createRepositoryGroup,
+  getGroup as getRepositoryGroup,
+} from "@/lib/repositories/groups"
+import { createGroupSchema } from "@/lib/validation/group"
 
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url)
     const groupId = searchParams.get("groupId") ?? undefined
-    const cookieStore = await cookies()
-    const user = await getUserBySession(cookieStore.get(SESSION_COOKIE_NAME)?.value)
-    const group = await getGroup(groupId, user?.email)
+    const user = await getSessionUser()
+    const group = await getRepositoryGroup(groupId, user?.email)
 
     return NextResponse.json({ group })
-  } catch {
+  } catch (error) {
     return NextResponse.json(
-      { error: "Unable to load group." },
-      { status: 500 }
+      { error: getErrorMessage(error, "Unable to load group.") },
+      { status: getErrorStatus(error) }
     )
   }
 }
 
 export async function POST(request: Request) {
   try {
-    const cookieStore = await cookies()
-    const user = await getUserBySession(cookieStore.get(SESSION_COOKIE_NAME)?.value)
-    const body = (await request.json()) as Partial<CreateGroupInput>
-    const name = body.name?.trim() ?? ""
-    const memberNames =
-      body.memberNames?.map((memberName) => memberName.trim()).filter(Boolean) ?? []
-    const budgetMonthly =
-      typeof body.budgetMonthly === "number" && Number.isFinite(body.budgetMonthly)
-        ? body.budgetMonthly
-        : 0
+    const user = await getSessionUser()
 
     if (!user) {
       return NextResponse.json(
@@ -41,24 +34,21 @@ export async function POST(request: Request) {
       )
     }
 
-    if (!name || memberNames.length === 0) {
+    const payload = createGroupSchema.safeParse(await request.json())
+    if (!payload.success) {
       return NextResponse.json(
-        { error: "Group name and at least one member are required." },
+        { error: payload.error.issues[0]?.message ?? "Invalid group details." },
         { status: 400 }
       )
     }
 
-    const group = await createGroup({
-      name,
-      memberNames,
-      budgetMonthly,
-    }, user.email)
+    const group = await createRepositoryGroup(payload.data, user.email)
 
     return NextResponse.json({ group }, { status: 201 })
-  } catch {
+  } catch (error) {
     return NextResponse.json(
-      { error: "Unable to create group." },
-      { status: 500 }
+      { error: getErrorMessage(error, "Unable to create group.") },
+      { status: getErrorStatus(error) }
     )
   }
 }

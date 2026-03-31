@@ -1,4 +1,4 @@
-import type { Group, Insight, SpendingCategory, Transaction } from "@/lib/types"
+import type { Group, Insight, SpendingCategory, Transaction } from "./types"
 
 const CATEGORY_COLORS = [
   "var(--chart-1)",
@@ -22,6 +22,24 @@ export function getTotalExpenses(group: Group) {
   return group.transactions
     .filter((transaction) => transaction.type === "expense")
     .reduce((sum, transaction) => sum + transaction.amount, 0)
+}
+
+export function getBudgetStatus(group: Group) {
+  const spent = getTotalExpenses(group)
+  const budget = group.budgetMonthly
+  const remaining = Math.max(0, budget - spent)
+  const percentUsed = budget > 0 ? Math.min(100, Math.round((spent / budget) * 100)) : 0
+  const isOverBudget = budget > 0 && spent > budget
+  const variance = budget > 0 ? spent - budget : spent
+
+  return {
+    spent,
+    budget,
+    remaining,
+    percentUsed,
+    isOverBudget,
+    variance,
+  }
 }
 
 export function getAverageContribution(group: Group) {

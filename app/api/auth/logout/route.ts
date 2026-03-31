@@ -1,9 +1,7 @@
 import { NextResponse } from "next/server"
 import { cookies } from "next/headers"
-import {
-  deleteSession,
-  SESSION_COOKIE_NAME,
-} from "@/lib/auth-store"
+import { deleteSession } from "@/lib/repositories/auth"
+import { SESSION_COOKIE_NAME, sessionCookieOptions } from "@/lib/auth/session"
 
 export async function POST() {
   const cookieStore = await cookies()
@@ -13,6 +11,6 @@ export async function POST() {
     await deleteSession(sessionId)
   }
 
-  cookieStore.delete(SESSION_COOKIE_NAME)
+  cookieStore.set(SESSION_COOKIE_NAME, "", { ...sessionCookieOptions, maxAge: 0 })
   return NextResponse.json({ ok: true })
 }

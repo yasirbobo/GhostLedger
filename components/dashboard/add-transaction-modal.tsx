@@ -19,7 +19,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { Plus, Lock } from "lucide-react"
+import { Plus, Lock, Repeat } from "lucide-react"
 import type { AddTransactionInput, Member } from "@/lib/types"
 
 interface AddTransactionModalProps {
@@ -35,6 +35,11 @@ export function AddTransactionModal({ members, onAdd }: AddTransactionModalProps
   const [memberId, setMemberId] = useState("")
   const [category, setCategory] = useState("")
   const [isPrivate, setIsPrivate] = useState(false)
+  const [isRecurring, setIsRecurring] = useState(false)
+  const [frequency, setFrequency] = useState<"weekly" | "monthly">("monthly")
+  const [nextRunDate, setNextRunDate] = useState(
+    new Date().toISOString().split("T")[0] ?? ""
+  )
   const [isSubmitting, setIsSubmitting] = useState(false)
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -53,6 +58,12 @@ export function AddTransactionModal({ members, onAdd }: AddTransactionModalProps
         memberName: member.name,
         isPrivate,
         category: type === "contribution" ? "Contribution" : category,
+        recurrence: isRecurring
+          ? {
+              frequency,
+              nextRunDate,
+            }
+          : undefined,
       })
 
       setDescription("")
@@ -60,6 +71,9 @@ export function AddTransactionModal({ members, onAdd }: AddTransactionModalProps
       setMemberId("")
       setCategory("")
       setIsPrivate(false)
+      setIsRecurring(false)
+      setFrequency("monthly")
+      setNextRunDate(new Date().toISOString().split("T")[0] ?? "")
       setOpen(false)
     } finally {
       setIsSubmitting(false)
@@ -211,6 +225,60 @@ export function AddTransactionModal({ members, onAdd }: AddTransactionModalProps
             />
           </div>
 
+          <div className="space-y-3 rounded-lg border border-border bg-secondary/30 p-4">
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10">
+                  <Repeat className="h-4 w-4 text-primary" />
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-foreground">Recurring schedule</p>
+                  <p className="text-xs text-muted-foreground">
+                    Save this as a repeating transaction plan.
+                  </p>
+                </div>
+              </div>
+              <Switch
+                checked={isRecurring}
+                onCheckedChange={setIsRecurring}
+                disabled={isSubmitting}
+                className="data-[state=checked]:bg-primary"
+              />
+            </div>
+
+            {isRecurring ? (
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div className="space-y-2">
+                  <Label className="text-foreground">Frequency</Label>
+                  <Select
+                    value={frequency}
+                    onValueChange={(value: "weekly" | "monthly") => setFrequency(value)}
+                  >
+                    <SelectTrigger className="border-border bg-secondary/50 text-foreground">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent className="border-border bg-card">
+                      <SelectItem value="weekly">Weekly</SelectItem>
+                      <SelectItem value="monthly">Monthly</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="nextRunDate" className="text-foreground">
+                    Next run date
+                  </Label>
+                  <Input
+                    id="nextRunDate"
+                    type="date"
+                    value={nextRunDate}
+                    onChange={(event) => setNextRunDate(event.target.value)}
+                    className="border-border bg-secondary/50 text-foreground"
+                  />
+                </div>
+              </div>
+            ) : null}
+          </div>
+
           <Button
             type="submit"
             className="w-full bg-primary text-primary-foreground hover:bg-primary/90"
@@ -220,6 +288,7 @@ export function AddTransactionModal({ members, onAdd }: AddTransactionModalProps
               !amount ||
               Number.parseFloat(amount) <= 0 ||
               !memberId ||
+              (isRecurring && !nextRunDate) ||
               (type === "expense" && !category)
             }
           >

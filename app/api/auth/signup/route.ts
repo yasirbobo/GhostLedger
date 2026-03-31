@@ -1,44 +1,50 @@
 import { NextResponse } from "next/server"
 import { cookies } from "next/headers"
-import {
-  createSession,
-  createUser,
-  isValidEmail,
-  SESSION_COOKIE_NAME,
-} from "@/lib/auth-store"
-
-const cookieOptions = {
-  httpOnly: true,
-  sameSite: "lax" as const,
-  secure: process.env.NODE_ENV === "production",
-  path: "/",
-}
+import { createSession, createUser } from "@/lib/repositories/auth"
+import { SESSION_COOKIE_NAME, sessionCookieOptions } from "@/lib/auth/session"
+import { logEvent } from "@/lib/observability/logger"
+import { consumeRateLimit, getClientIp } from "@/lib/security/rate-limit"
+import { signupSchema } from "@/lib/validation/auth"
 
 export async function POST(request: Request) {
   try {
-    const body = (await request.json()) as {
-      name?: string
-      email?: string
-      password?: string
-    }
-    const name = body.name?.trim() ?? ""
-    const email = body.email?.trim() ?? ""
-    const password = body.password ?? ""
+    const clientIp = getClientIp(request)
+    const rateLimit = consumeRateLimit({
+      key: `auth:signup:${clientIp}`,
+      limit: 5,
+      windowMs: 60_000,
+    })
 
-    if (!name || !isValidEmail(email) || password.length < 8) {
+    if (!rateLimit.allowed) {
       return NextResponse.json(
-        { error: "Enter a name, valid email, and password with at least 8 characters." },
+        { error: "Too many sign-up attempts. Please wait a minute and try again." },
+        { status: 429 }
+      )
+    }
+
+    const payload = signupSchema.safeParse(await request.json())
+    if (!payload.success) {
+      return NextResponse.json(
+        { error: payload.error.issues[0]?.message ?? "Invalid sign-up details." },
         { status: 400 }
       )
     }
 
-    const user = await createUser({ name, email, password })
+    const user = await createUser(payload.data)
     const sessionId = await createSession(user.id)
     const cookieStore = await cookies()
-    cookieStore.set(SESSION_COOKIE_NAME, sessionId, cookieOptions)
+    cookieStore.set(SESSION_COOKIE_NAME, sessionId, sessionCookieOptions)
+    logEvent("info", "auth.signup.success", {
+      email: user.email,
+      clientIp,
+    })
 
     return NextResponse.json({ user }, { status: 201 })
   } catch (error) {
+    logEvent("warn", "auth.signup.failed", {
+      clientIp: getClientIp(request),
+      message: error instanceof Error ? error.message : "Unable to create account.",
+    })
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "Unable to create account." },
       { status: 500 }

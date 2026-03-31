@@ -5,9 +5,21 @@ import { GroupProvider } from '@/components/providers/group-provider'
 import './globals.css'
 
 export const metadata: Metadata = {
-  title: 'GhostLedger - Private AI-Powered Team Finance',
-  description: 'A private AI-powered team finance dashboard for managing group expenses, contributions, and financial insights with encrypted privacy mode.',
-  generator: 'v0.app',
+  metadataBase: new URL('https://ghostledger.app'),
+  title: {
+    default: 'GhostLedger',
+    template: '%s | GhostLedger',
+  },
+  description:
+    'GhostLedger helps teams manage shared budgets, contributions, expenses, and AI-backed financial insights in one private workspace.',
+  applicationName: 'GhostLedger',
+  keywords: [
+    'team finance',
+    'shared expenses',
+    'group budget',
+    'expense tracking',
+    'financial insights',
+  ],
   icons: {
     icon: [
       {
@@ -24,6 +36,19 @@ export const metadata: Metadata = {
       },
     ],
     apple: '/apple-icon.png',
+  },
+  openGraph: {
+    title: 'GhostLedger',
+    description:
+      'Private team finance software for shared budgets, contributions, expenses, and actionable insights.',
+    siteName: 'GhostLedger',
+    type: 'website',
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'GhostLedger',
+    description:
+      'Private team finance software for shared budgets, contributions, expenses, and actionable insights.',
   },
 }
 

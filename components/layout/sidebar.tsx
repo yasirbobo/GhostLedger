@@ -6,6 +6,8 @@ import {
   LayoutDashboard,
   Receipt,
   Lightbulb,
+  Settings,
+  CreditCard,
   Ghost,
   Users,
   Menu,
@@ -20,6 +22,8 @@ const navItems = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/transactions", label: "Transactions", icon: Receipt },
   { href: "/insights", label: "Insights", icon: Lightbulb },
+  { href: "/billing", label: "Billing", icon: CreditCard },
+  { href: "/settings", label: "Settings", icon: Settings },
 ]
 
 export function Sidebar() {

@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server"
-import { cookies } from "next/headers"
-import { getUserBySession, SESSION_COOKIE_NAME } from "@/lib/auth-store"
+import { getSessionUser } from "@/lib/auth/get-session-user"
 import {
   getInsights,
   getSpendingCategories,
@@ -8,8 +7,13 @@ import {
   getTotalExpenses,
   summarizePrivateSpending,
 } from "@/lib/group-analytics"
-import { getGroup } from "@/lib/group-store"
+import { getErrorMessage, getErrorStatus } from "@/lib/http/errors"
+import { getOpenAIConfig } from "@/lib/openai/config"
+import { logEvent } from "@/lib/observability/logger"
+import { getGroup } from "@/lib/repositories/groups"
+import { consumeRateLimit, getClientIp } from "@/lib/security/rate-limit"
 import type { Group } from "@/lib/types"
+import { aiQuestionSchema } from "@/lib/validation/ai"
 
 interface OpenAIResponsePayload {
   id: string
@@ -121,8 +125,8 @@ async function generateModelAnswer(input: {
   group: Group
   previousResponseId?: string
 }) {
-  const apiKey = process.env.OPENAI_API_KEY
-  if (!apiKey) {
+  const config = getOpenAIConfig()
+  if (!config) {
     return null
   }
 
@@ -130,10 +134,10 @@ async function generateModelAnswer(input: {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      Authorization: `Bearer ${apiKey}`,
+      Authorization: `Bearer ${config.apiKey}`,
     },
     body: JSON.stringify({
-      model: process.env.OPENAI_MODEL ?? "gpt-5-mini",
+      model: config.model,
       instructions:
         "You are GhostLedger's financial analyst. Answer only from the provided ledger snapshot. Be concise, precise, and explicit when data is missing. Do not invent transactions, budgets, or member activity.",
       previous_response_id: input.previousResponseId,
@@ -170,14 +174,21 @@ async function generateModelAnswer(input: {
 
 export async function POST(request: Request) {
   try {
-    const cookieStore = await cookies()
-    const user = await getUserBySession(cookieStore.get(SESSION_COOKIE_NAME)?.value)
-    const body = (await request.json()) as {
-      question?: string
-      groupId?: string
-      previousResponseId?: string
+    const clientIp = getClientIp(request)
+    const rateLimit = consumeRateLimit({
+      key: `ai:${clientIp}`,
+      limit: 20,
+      windowMs: 60_000,
+    })
+
+    if (!rateLimit.allowed) {
+      return NextResponse.json(
+        { error: "Too many analyst requests. Please wait a minute and try again." },
+        { status: 429 }
+      )
     }
-    const question = body.question?.trim()
+
+    const user = await getSessionUser()
 
     if (!user) {
       return NextResponse.json(
@@ -186,37 +197,54 @@ export async function POST(request: Request) {
       )
     }
 
-    if (!question || !body.groupId) {
+    const payload = aiQuestionSchema.safeParse(await request.json())
+    if (!payload.success) {
       return NextResponse.json(
-        { error: "Question and group id are required." },
+        { error: payload.error.issues[0]?.message ?? "Invalid AI request." },
         { status: 400 }
       )
     }
 
-    const group = await getGroup(body.groupId, user.email)
+    const group = await getGroup(payload.data.groupId, user.email)
 
     try {
       const modelResponse = await generateModelAnswer({
-        question,
+        question: payload.data.question,
         group,
-        previousResponseId: body.previousResponseId,
+        previousResponseId: payload.data.previousResponseId,
       })
 
       if (modelResponse) {
+        logEvent("info", "ai.response.generated", {
+          groupId: group.id,
+          userId: user.id,
+          source: "model",
+          clientIp,
+        })
         return NextResponse.json(modelResponse)
       }
     } catch {
       // Fall back to deterministic analytics if the model request fails.
     }
 
+    logEvent("info", "ai.response.generated", {
+      groupId: group.id,
+      userId: user.id,
+      source: "deterministic",
+      clientIp,
+    })
     return NextResponse.json({
-      answer: answerQuestion(question, group),
+      answer: answerQuestion(payload.data.question, group),
       responseId: null,
     })
-  } catch {
+  } catch (error) {
+    logEvent("error", "ai.response.failed", {
+      clientIp: getClientIp(request),
+      message: error instanceof Error ? error.message : "Unable to process AI request.",
+    })
     return NextResponse.json(
-      { error: "Unable to process AI request." },
-      { status: 500 }
+      { error: getErrorMessage(error, "Unable to process AI request.") },
+      { status: getErrorStatus(error) }
     )
   }
 }
