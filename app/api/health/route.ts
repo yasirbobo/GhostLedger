@@ -20,12 +20,8 @@ export async function GET() {
     }
   }
 
-  const status =
-    result.isValid && database !== "error"
-      ? result.warnings.length > 0
-        ? "degraded"
-        : "ok"
-      : "degraded"
+  const hasFailure = !result.isValid || database === "error"
+  const status = hasFailure ? "degraded" : result.warnings.length > 0 ? "warning" : "ok"
 
   return NextResponse.json(
     {
@@ -42,7 +38,7 @@ export async function GET() {
       warnings: result.warnings,
     },
     {
-      status: status === "ok" ? 200 : 503,
+      status: hasFailure ? 503 : 200,
       headers: {
         "Cache-Control": "no-store",
       },

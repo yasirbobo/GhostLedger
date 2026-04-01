@@ -75,14 +75,10 @@ For launch readiness, prefer `database` mode. File mode remains useful for local
 ## Launch Checklist
 
 1. Set production environment variables.
-2. Run `npm run db:generate`.
-3. Run `npm run db:push`.
-4. Run `npm run db:seed` if migrating from file-backed local data.
-5. Run:
-   - `npm test`
-   - `npm run lint`
-   - `npm run typecheck`
-   - `npm run build`
+2. Run `npm run db:push`.
+3. Run `npm run db:seed` if migrating from file-backed local data.
+4. Run:
+   - `npm run launch:ready`
 6. Deploy.
 7. Verify `GET /api/health` returns `ok`.
 8. Smoke test:
@@ -94,6 +90,19 @@ For launch readiness, prefer `database` mode. File mode remains useful for local
    - run recurring jobs
 
 ## Quality Checks
+
+```bash
+npm run launch:check
+npm run launch:ready
+```
+
+Or run the lower-level checks:
+
+```bash
+npm run verify
+```
+
+Or run the individual commands:
 
 ```bash
 npm test
@@ -108,6 +117,7 @@ Automated CI now runs the same verification flow on pushes and pull requests.
 
 - `GET /api/health` returns a lightweight deployment health response
 - health validation checks environment readiness, database connectivity in database mode, storage mode, AI configuration presence, and billing plan availability
+- health warnings do not fail the endpoint; only real launch blockers return `503`
 - local delivery jobs support summary/reminder output through a development outbox in file mode and a Prisma-backed outbox in database mode
 - auth and AI endpoints have in-memory rate limiting for launch protection
 - see [docs/runbook.md](/workspace/docs/runbook.md) and [docs/security.md](/workspace/docs/security.md) for launch operations

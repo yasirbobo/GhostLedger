@@ -2,6 +2,7 @@ import { NextResponse } from "next/server"
 import { cookies } from "next/headers"
 import { createSession, createUser } from "@/lib/repositories/auth"
 import { SESSION_COOKIE_NAME, sessionCookieOptions } from "@/lib/auth/session"
+import { getErrorMessage, getErrorStatus } from "@/lib/http/errors"
 import { logEvent } from "@/lib/observability/logger"
 import { consumeRateLimit, getClientIp } from "@/lib/security/rate-limit"
 import { signupSchema } from "@/lib/validation/auth"
@@ -43,11 +44,11 @@ export async function POST(request: Request) {
   } catch (error) {
     logEvent("warn", "auth.signup.failed", {
       clientIp: getClientIp(request),
-      message: error instanceof Error ? error.message : "Unable to create account.",
+      message: getErrorMessage(error, "Unable to create account."),
     })
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : "Unable to create account." },
-      { status: 500 }
+      { error: getErrorMessage(error, "Unable to create account.") },
+      { status: getErrorStatus(error) }
     )
   }
 }

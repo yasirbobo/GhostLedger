@@ -29,6 +29,10 @@ export function validateAppEnv() {
     issues.push("DATABASE_URL is required when GHOSTLEDGER_STORAGE_MODE=database.")
   }
 
+  if (env.nodeEnv === "production" && env.storageMode === "file") {
+    warnings.push("Production is running in file storage mode. Use database mode for launch.")
+  }
+
   if (!env.openAiApiKey) {
     warnings.push("OPENAI_API_KEY is not configured. AI responses will use deterministic fallback.")
   }

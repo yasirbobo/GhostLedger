@@ -8,13 +8,9 @@
    - `OPENAI_API_KEY` if AI model responses are required
    - `OPENAI_MODEL` if overriding the default
 2. Run:
-   - `npm run db:generate`
-   - `npm test`
-   - `npm run lint`
-   - `npm run typecheck`
-   - `npm run build`
-3. If launching with database mode, run:
    - `npm run db:push`
+   - `npm run launch:ready`
+3. If launching with database mode, run:
    - `npm run db:seed` if migrating from local JSON state
 
 ## Health Checks
