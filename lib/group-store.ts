@@ -568,7 +568,7 @@ export async function addMemberToGroup(
   groupId: string,
   memberEmail: string,
   requesterEmail: string,
-  role: GroupRole = "member"
+  role: Exclude<GroupRole, "owner"> = "member"
 ) {
   const store = await readStore()
   const group = store.groups[groupId]
@@ -583,8 +583,16 @@ export async function addMemberToGroup(
     throw new Error("Group not found")
   }
 
+  if (!canAssignRole(requesterRole, role)) {
+    throw new Error("Insufficient permissions")
+  }
+
   if (!isValidEmail(normalizedMemberEmail)) {
     throw new Error("Invite email is invalid.")
+  }
+
+  if (group.ownerEmail === normalizedMemberEmail) {
+    throw new Error("Owner access cannot be changed.")
   }
 
   const nextMemberEmails = new Set(group.memberEmails ?? [])
@@ -632,12 +640,21 @@ export async function updateMemberAccess(
     throw new Error("Group not found")
   }
 
+  if (normalizeEmail(requesterEmail) === normalizedMemberEmail) {
+    throw new Error("You cannot change your own access.")
+  }
+
   if (group.ownerEmail === normalizedMemberEmail) {
     throw new Error("Owner access cannot be changed.")
   }
 
   if (!(group.memberEmails ?? []).includes(normalizedMemberEmail)) {
     throw new Error("Access entry not found.")
+  }
+
+  const currentRole = getStoredAccessRole(group, normalizedMemberEmail)
+  if (!canChangeRole(requesterRole, currentRole, role)) {
+    throw new Error("Insufficient permissions")
   }
 
   const updatedGroup: StoredGroup = {
@@ -691,6 +708,11 @@ export async function removeMemberAccess(
 
   if (!(group.memberEmails ?? []).includes(normalizedMemberEmail)) {
     throw new Error("Access entry not found.")
+  }
+
+  const targetRole = getStoredAccessRole(group, normalizedMemberEmail)
+  if (!canRemoveRole(requesterRole, targetRole)) {
+    throw new Error("Insufficient permissions")
   }
 
   const nextMemberEmails = (group.memberEmails ?? []).filter(

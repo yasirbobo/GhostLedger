@@ -1,7 +1,20 @@
 import { InviteStatus, RecurringFrequency, TransactionType } from "@prisma/client"
 import { getPrismaClient } from "../client"
 import { mapGroup } from "../mappers"
-import type { AddTransactionInput, CreateGroupInput, RecurringJobResult } from "../../types"
+import {
+  canAssignRole,
+  canChangeRole,
+  canCreateTransactions,
+  canModifyTransactions,
+  canRemoveRole,
+  normalizeGroupRole,
+} from "../../authz/group-permissions"
+import type {
+  AddTransactionInput,
+  CreateGroupInput,
+  GroupRole,
+  RecurringJobResult,
+} from "../../types"
 
 function getInitials(name: string) {
   return name
@@ -79,17 +92,33 @@ function hasWorkspaceAccess(
 function getWorkspaceRole(
   group: Awaited<ReturnType<typeof loadGroupWorkspace>>,
   requesterEmail: string
-) {
+): GroupRole {
   const normalizedRequesterEmail = requesterEmail.trim().toLowerCase()
 
   if (group?.owner.email === normalizedRequesterEmail) {
     return "owner"
   }
 
-  return (
+  return normalizeGroupRole(
     group?.members.find((member) => member.email === normalizedRequesterEmail)?.role ??
-    group?.invites.find((invite) => invite.email === normalizedRequesterEmail)?.role ??
-    "member"
+      group?.invites.find((invite) => invite.email === normalizedRequesterEmail)?.role ??
+      "member"
+  )
+}
+
+function getWorkspaceAccessRole(
+  group: Awaited<ReturnType<typeof loadGroupWorkspace>>,
+  memberEmail: string
+): GroupRole {
+  const normalizedMemberEmail = memberEmail.trim().toLowerCase()
+
+  if (group?.owner.email === normalizedMemberEmail) {
+    return "owner"
+  }
+
+  return normalizeGroupRole(
+    group?.members.find((member) => member.email === normalizedMemberEmail)?.role ??
+      group?.invites.find((invite) => invite.email === normalizedMemberEmail)?.role
   )
 }
 
@@ -226,7 +255,15 @@ export async function addTransactionToWorkspace(
   }
 
   const requesterRole = getWorkspaceRole(existingGroup, requesterEmail)
-  if (requesterRole === "viewer") {
+  if (!canCreateTransactions({ ...mapGroup({
+    group: existingGroup,
+    members: existingGroup.members,
+    invites: existingGroup.invites,
+    recurringPlans: existingGroup.recurringPlans,
+    transactions: existingGroup.transactions,
+    ownerEmail: existingGroup.owner.email,
+    requesterEmail,
+  }), currentUserRole: requesterRole })) {
     throw new Error("Insufficient permissions")
   }
 
@@ -326,7 +363,15 @@ export async function deleteTransactionFromWorkspace(
   }
 
   const requesterRole = getWorkspaceRole(existingGroup, requesterEmail)
-  if (requesterRole === "viewer") {
+  if (!canModifyTransactions({ ...mapGroup({
+    group: existingGroup,
+    members: existingGroup.members,
+    invites: existingGroup.invites,
+    recurringPlans: existingGroup.recurringPlans,
+    transactions: existingGroup.transactions,
+    ownerEmail: existingGroup.owner.email,
+    requesterEmail,
+  }), currentUserRole: requesterRole })) {
     throw new Error("Insufficient permissions")
   }
 
@@ -392,7 +437,15 @@ export async function updateTransactionInWorkspace(
   }
 
   const requesterRole = getWorkspaceRole(existingGroup, requesterEmail)
-  if (requesterRole === "viewer") {
+  if (!canModifyTransactions({ ...mapGroup({
+    group: existingGroup,
+    members: existingGroup.members,
+    invites: existingGroup.invites,
+    recurringPlans: existingGroup.recurringPlans,
+    transactions: existingGroup.transactions,
+    ownerEmail: existingGroup.owner.email,
+    requesterEmail,
+  }), currentUserRole: requesterRole })) {
     throw new Error("Insufficient permissions")
   }
 
@@ -493,9 +546,24 @@ export async function addMemberAccessToWorkspace(
     throw new Error("Group not found")
   }
 
+  if (!canAssignRole(requesterRole, role)) {
+    throw new Error("Insufficient permissions")
+  }
+
+  if (existingGroup.owner.email === normalizedMemberEmail) {
+    throw new Error("Owner access cannot be changed.")
+  }
+
   const existingUser = await prisma.user.findUnique({
     where: { email: normalizedMemberEmail },
   })
+
+  const normalizedRequesterEmail = requesterEmail.trim().toLowerCase()
+  const inviterId =
+    existingGroup.owner.email === normalizedRequesterEmail
+      ? existingGroup.ownerId
+      : existingGroup.members.find((member) => member.email === normalizedRequesterEmail)?.userId ??
+        existingGroup.ownerId
 
   const existingInvite = existingGroup.invites.find(
     (invite) => invite.email === normalizedMemberEmail
@@ -518,7 +586,7 @@ export async function addMemberAccessToWorkspace(
         token: `invite:${groupId}:${normalizedMemberEmail}`,
         status: InviteStatus.pending,
         role,
-        invitedById: existingGroup.ownerId,
+        invitedById: inviterId,
         acceptedById: existingUser?.id,
         expiresAt: new Date(Date.now() + 1000 * 60 * 60 * 24 * 30),
       },
@@ -560,6 +628,11 @@ export async function updateMemberAccessInWorkspace(
     throw new Error("Group not found")
   }
 
+  const normalizedRequesterEmail = requesterEmail.trim().toLowerCase()
+  if (normalizedRequesterEmail === normalizedMemberEmail) {
+    throw new Error("You cannot change your own access.")
+  }
+
   if (existingGroup.owner.email === normalizedMemberEmail) {
     throw new Error("Owner access cannot be changed.")
   }
@@ -573,6 +646,11 @@ export async function updateMemberAccessInWorkspace(
 
   if (!existingMember && !existingInvite) {
     throw new Error("Access entry not found.")
+  }
+
+  const currentRole = getWorkspaceAccessRole(existingGroup, normalizedMemberEmail)
+  if (!canChangeRole(requesterRole, currentRole, role)) {
+    throw new Error("Insufficient permissions")
   }
 
   await prisma.$transaction(async (tx) => {
@@ -644,6 +722,11 @@ export async function removeMemberAccessFromWorkspace(
 
   if (!existingMember && !existingInvite) {
     throw new Error("Access entry not found.")
+  }
+
+  const targetRole = getWorkspaceAccessRole(existingGroup, normalizedMemberEmail)
+  if (!canRemoveRole(requesterRole, targetRole)) {
+    throw new Error("Insufficient permissions")
   }
 
   await prisma.$transaction(async (tx) => {
@@ -837,14 +920,10 @@ function canManageInvite(
     return false
   }
 
-  const normalizedRequesterEmail = requesterEmail.trim().toLowerCase()
-  if (invite.group.owner.email === normalizedRequesterEmail) {
-    return true
-  }
+  const requesterRole = getWorkspaceRole(invite.group, requesterEmail)
+  const targetRole = normalizeGroupRole(invite.role)
 
-  return invite.group.members.some(
-    (member) => member.email === normalizedRequesterEmail && member.role === "admin"
-  )
+  return canRemoveRole(requesterRole, targetRole)
 }
 
 export async function resendInvite(token: string, requesterEmail: string) {
@@ -927,6 +1006,10 @@ export async function acceptInvite(token: string, userEmail: string) {
 
   if (!invite || invite.email !== normalizedUserEmail) {
     throw new Error("Invite not found")
+  }
+
+  if (invite.status !== InviteStatus.pending) {
+    throw new Error("Invite is no longer active.")
   }
 
   if (invite.expiresAt.getTime() <= Date.now()) {
