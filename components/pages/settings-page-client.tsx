@@ -11,6 +11,7 @@ import {
   Send,
 } from "lucide-react"
 import { AppShell } from "@/components/layout/app-shell"
+import { PageHeader } from "@/components/layout/page-header"
 import { useAuth } from "@/components/providers/auth-provider"
 import { useGroup } from "@/components/providers/group-provider"
 import { Button } from "@/components/ui/button"
@@ -304,17 +305,15 @@ export function SettingsPageClient() {
 
   return (
     <AppShell>
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold tracking-tight text-foreground lg:text-3xl">
-          Settings
-        </h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Manage how GhostLedger keeps you updated.
-        </p>
-      </div>
+      <div className="space-y-6">
+      <PageHeader
+        eyebrow="Workspace controls"
+        title="Settings"
+        description="Manage workspace details, notification preferences, and the delivery workflows that support your finance operations."
+      />
 
       <div className="grid gap-6 lg:grid-cols-[1.2fr_0.8fr]">
-        <Card className="border-border bg-card">
+        <Card className="section-card border-0 bg-transparent shadow-none">
           <CardHeader>
             <CardTitle className="text-base font-semibold text-foreground">
               Notification Preferences
@@ -330,7 +329,7 @@ export function SettingsPageClient() {
               return (
                 <div
                   key={item.key}
-                  className="flex items-start justify-between gap-4 rounded-lg border border-border bg-secondary/20 p-4"
+                  className="flex items-start justify-between gap-4 rounded-2xl border border-border/70 bg-secondary/20 p-4"
                 >
                   <div className="flex gap-3">
                     <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
@@ -354,7 +353,7 @@ export function SettingsPageClient() {
         </Card>
 
         <div className="space-y-6">
-          <Card className="border-border bg-card">
+          <Card className="section-card border-0 bg-transparent shadow-none">
             <CardHeader>
               <CardTitle className="text-base font-semibold text-foreground">
                 Workspace Settings
@@ -366,7 +365,7 @@ export function SettingsPageClient() {
             <CardContent>
               {group.isOwner ? (
                 <form onSubmit={handleWorkspaceSave} className="space-y-4">
-                  <div className="rounded-lg border border-border bg-secondary/20 p-4">
+                  <div className="rounded-2xl border border-border/70 bg-secondary/20 p-4">
                     <div className="mb-4 flex items-center gap-3">
                       <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
                         <Building2 className="h-4 w-4 text-primary" />
@@ -411,14 +410,14 @@ export function SettingsPageClient() {
                   </Button>
                 </form>
               ) : (
-                <div className="rounded-lg border border-border bg-secondary/20 p-4 text-sm text-muted-foreground">
+                <div className="rounded-2xl border border-border/70 bg-secondary/20 p-4 text-sm text-muted-foreground">
                   Only the workspace owner can update shared settings.
                 </div>
               )}
             </CardContent>
           </Card>
 
-          <Card className="border-border bg-card">
+          <Card className="section-card border-0 bg-transparent shadow-none">
             <CardHeader>
               <CardTitle className="text-base font-semibold text-foreground">
                 Account Snapshot
@@ -428,12 +427,12 @@ export function SettingsPageClient() {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="rounded-lg border border-border bg-secondary/20 p-4">
+              <div className="rounded-2xl border border-border/70 bg-secondary/20 p-4">
                 <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Signed in as</p>
                 <p className="mt-2 text-sm font-medium text-foreground">{user?.name ?? "Unknown user"}</p>
                 <p className="text-sm text-muted-foreground">{user?.email ?? "No active session"}</p>
               </div>
-              <div className="rounded-lg border border-border bg-secondary/20 p-4 text-sm text-muted-foreground">
+              <div className="rounded-2xl border border-border/70 bg-secondary/20 p-4 text-sm text-muted-foreground">
                 Delivery infrastructure is currently local and file-backed. These preferences are ready for future email jobs and notification pipelines.
               </div>
               <Button
@@ -464,23 +463,23 @@ export function SettingsPageClient() {
                 Send recurring reminders
               </Button>
               {summaryPreview ? (
-                <div className="rounded-lg border border-border bg-secondary/20 p-4 text-sm text-muted-foreground">
+                <div className="rounded-2xl border border-border/70 bg-secondary/20 p-4 text-sm text-muted-foreground">
                   {summaryPreview}
                 </div>
               ) : null}
               {deliveryMessage ? (
-                <div className="rounded-lg border border-border bg-secondary/20 p-4 text-sm text-muted-foreground">
+                <div className="rounded-2xl border border-border/70 bg-secondary/20 p-4 text-sm text-muted-foreground">
                   {deliveryMessage}
                 </div>
               ) : null}
-              <div className="rounded-lg border border-border bg-secondary/20 p-4">
+              <div className="rounded-2xl border border-border/70 bg-secondary/20 p-4">
                 <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
                   Local outbox
                 </p>
                 <div className="mt-3 space-y-2">
                   {outbox.length > 0 ? (
                     outbox.slice(0, 3).map((email) => (
-                      <div key={email.id} className="rounded-md border border-border bg-background px-3 py-2">
+                      <div key={email.id} className="rounded-xl border border-border/70 bg-background px-3 py-2">
                         <p className="text-sm font-medium text-foreground">{email.subject}</p>
                         <p className="text-xs text-muted-foreground">{email.to}</p>
                       </div>
@@ -498,6 +497,7 @@ export function SettingsPageClient() {
             </CardContent>
           </Card>
         </div>
+      </div>
       </div>
     </AppShell>
   )

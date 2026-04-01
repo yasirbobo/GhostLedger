@@ -1,223 +1,181 @@
 "use client"
 
 import Link from "next/link"
-import { Button } from "@/components/ui/button"
 import {
-  Ghost,
-  Sparkles,
-  Lock,
-  Users,
   ArrowRight,
-  Shield,
+  Bot,
+  Ghost,
+  LockKeyhole,
+  ShieldCheck,
   TrendingUp,
-  Zap,
+  Users,
 } from "lucide-react"
+import { Button } from "@/components/ui/button"
+
+const proofPoints = [
+  {
+    title: "Shared visibility without noise",
+    description:
+      "Give every team member a clean view of budgets, contributions, and operating spend.",
+    icon: Users,
+  },
+  {
+    title: "AI that stays inside the ledger",
+    description:
+      "Ask direct questions about spend, runway, and fairness with grounded workspace answers.",
+    icon: Bot,
+  },
+  {
+    title: "Controls built for trust",
+    description:
+      "Private transactions, role-based access, exports, billing limits, and operational checks are already in the product.",
+    icon: ShieldCheck,
+  },
+]
+
+const metrics = [
+  { label: "Private workspaces", value: "Role-based" },
+  { label: "Recurring controls", value: "Built in" },
+  { label: "Team reporting", value: "CSV + monthly" },
+]
 
 export default function LandingPage() {
   return (
-    <div className="min-h-screen bg-background">
-      {/* Header */}
-      <header className="border-b border-border bg-background/80 backdrop-blur-xl">
-        <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-4 lg:px-8">
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary">
+    <div className="min-h-screen bg-transparent">
+      <header className="sticky top-0 z-30 border-b border-border/70 bg-background/70 backdrop-blur-xl">
+        <div className="mx-auto flex h-18 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
+          <Link href="/" className="flex items-center gap-3">
+            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-primary shadow-[0_10px_30px_rgba(111,227,182,0.3)]">
               <Ghost className="h-5 w-5 text-primary-foreground" />
             </div>
-            <span className="text-xl font-semibold tracking-tight text-foreground">
-              GhostLedger
-            </span>
-          </div>
+            <div>
+              <p className="text-base font-semibold text-foreground">GhostLedger</p>
+              <p className="text-xs text-muted-foreground">Private team finance</p>
+            </div>
+          </Link>
+
           <div className="flex items-center gap-3">
-            <Link href="/dashboard">
-              <Button variant="ghost" className="text-muted-foreground hover:text-foreground">
-                Dashboard
+            <Link href="/auth">
+              <Button variant="ghost" className="rounded-xl px-4">
+                Sign in
               </Button>
             </Link>
             <Link href="/create-group">
-              <Button className="bg-primary text-primary-foreground hover:bg-primary/90">
-                Get Started
+              <Button className="rounded-xl px-4">
+                Create workspace
               </Button>
             </Link>
           </div>
         </div>
       </header>
 
-      {/* Hero Section */}
-      <section className="relative overflow-hidden">
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-primary/10 via-background to-background" />
-        <div className="relative mx-auto max-w-6xl px-4 py-24 lg:px-8 lg:py-32">
-          <div className="mx-auto max-w-3xl text-center">
-            <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-border bg-secondary/50 px-4 py-1.5 text-sm text-muted-foreground">
-              <Lock className="h-3.5 w-3.5 text-primary" />
-              Private by design
-            </div>
-            <h1 className="text-balance text-4xl font-bold tracking-tight text-foreground sm:text-5xl lg:text-6xl">
-              Private AI-powered financial assistant for{" "}
-              <span className="text-primary">teams</span>
-            </h1>
-            <p className="mt-6 text-pretty text-lg text-muted-foreground lg:text-xl">
-              Manage your team{"'"}s finances with privacy-first design. Track contributions, 
-              expenses, and get AI-powered insights while keeping sensitive data encrypted.
-            </p>
-            <div className="mt-10 flex flex-col items-center gap-4 sm:flex-row sm:justify-center">
-              <Link href="/create-group">
-                <Button size="lg" className="gap-2 bg-primary text-primary-foreground hover:bg-primary/90">
-                  Create a Group
-                  <ArrowRight className="h-4 w-4" />
-                </Button>
-              </Link>
-              <Link href="/dashboard">
-                <Button size="lg" variant="outline" className="border-border text-foreground hover:bg-secondary">
-                  View Demo
-                </Button>
-              </Link>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Features Section */}
-      <section className="border-t border-border bg-secondary/30 py-24">
-        <div className="mx-auto max-w-6xl px-4 lg:px-8">
-          <div className="mx-auto max-w-2xl text-center">
-            <h2 className="text-3xl font-bold tracking-tight text-foreground sm:text-4xl">
-              Everything you need for team finance
-            </h2>
-            <p className="mt-4 text-lg text-muted-foreground">
-              Built for modern teams who value both transparency and privacy.
-            </p>
-          </div>
-
-          <div className="mt-16 grid gap-8 sm:grid-cols-2 lg:grid-cols-3">
-            {/* Feature 1: AI Insights */}
-            <div className="group rounded-2xl border border-border bg-card p-6 transition-colors hover:border-primary/50">
-              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10">
-                <Sparkles className="h-6 w-6 text-primary" />
-              </div>
-              <h3 className="mt-4 text-lg font-semibold text-foreground">
-                AI-Powered Insights
-              </h3>
-              <p className="mt-2 text-muted-foreground">
-                Get intelligent analysis of your spending patterns, contribution fairness, 
-                and budget recommendations from your AI financial analyst.
+      <main>
+        <section className="mx-auto max-w-7xl px-4 pb-16 pt-12 sm:px-6 lg:px-8 lg:pb-24 lg:pt-18">
+          <div className="grid gap-10 lg:grid-cols-[1.1fr_0.9fr] lg:items-center">
+            <div>
+              <span className="page-header-eyebrow">
+                <LockKeyhole className="h-3.5 w-3.5" />
+                Finance operations for modern teams
+              </span>
+              <h1 className="mt-6 max-w-3xl text-5xl font-semibold leading-tight text-foreground sm:text-6xl">
+                Professional shared-finance software that feels calm, private, and in control.
+              </h1>
+              <p className="mt-6 max-w-2xl text-base leading-7 text-muted-foreground sm:text-lg">
+                GhostLedger helps teams manage pooled budgets, contributions, expenses, recurring plans,
+                and AI-backed analysis in one secure workspace built for real operating rhythm.
               </p>
-            </div>
 
-            {/* Feature 2: Privacy Mode */}
-            <div className="group rounded-2xl border border-border bg-card p-6 transition-colors hover:border-primary/50">
-              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10">
-                <Shield className="h-6 w-6 text-primary" />
-              </div>
-              <h3 className="mt-4 text-lg font-semibold text-foreground">
-                Private Mode
-              </h3>
-              <p className="mt-2 text-muted-foreground">
-                Hide exact transaction amounts with encrypted ranges. 
-                Perfect for sensitive expenses that need privacy while maintaining accountability.
-              </p>
-            </div>
-
-            {/* Feature 3: Team Finance */}
-            <div className="group rounded-2xl border border-border bg-card p-6 transition-colors hover:border-primary/50">
-              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10">
-                <Users className="h-6 w-6 text-primary" />
-              </div>
-              <h3 className="mt-4 text-lg font-semibold text-foreground">
-                Team Finance
-              </h3>
-              <p className="mt-2 text-muted-foreground">
-                Track contributions from each team member, manage shared expenses, 
-                and maintain a transparent record of your group{"'"}s financial health.
-              </p>
-            </div>
-
-            {/* Feature 4: Smart Alerts */}
-            <div className="group rounded-2xl border border-border bg-card p-6 transition-colors hover:border-primary/50">
-              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10">
-                <Zap className="h-6 w-6 text-primary" />
-              </div>
-              <h3 className="mt-4 text-lg font-semibold text-foreground">
-                Smart Alerts
-              </h3>
-              <p className="mt-2 text-muted-foreground">
-                Automatic warnings for budget overruns, contribution imbalances, 
-                and savings goal progress to keep your team on track.
-              </p>
-            </div>
-
-            {/* Feature 5: Spending Analytics */}
-            <div className="group rounded-2xl border border-border bg-card p-6 transition-colors hover:border-primary/50">
-              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10">
-                <TrendingUp className="h-6 w-6 text-primary" />
-              </div>
-              <h3 className="mt-4 text-lg font-semibold text-foreground">
-                Spending Analytics
-              </h3>
-              <p className="mt-2 text-muted-foreground">
-                Visual breakdown of expenses by category with month-over-month trends 
-                and detailed transaction history.
-              </p>
-            </div>
-
-            {/* Feature 6: Ghost Mode */}
-            <div className="group rounded-2xl border border-border bg-card p-6 transition-colors hover:border-primary/50">
-              <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10">
-                <Ghost className="h-6 w-6 text-primary" />
-              </div>
-              <h3 className="mt-4 text-lg font-semibold text-foreground">
-                Ghost Mode
-              </h3>
-              <p className="mt-2 text-muted-foreground">
-                Seamlessly blend transparency with privacy. Your financial data stays 
-                visible to the team while sensitive details remain encrypted.
-              </p>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* CTA Section */}
-      <section className="border-t border-border py-24">
-        <div className="mx-auto max-w-6xl px-4 lg:px-8">
-          <div className="relative overflow-hidden rounded-3xl border border-border bg-card">
-            <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom_right,_var(--tw-gradient-stops))] from-primary/20 via-transparent to-transparent" />
-            <div className="relative px-8 py-16 text-center lg:px-16 lg:py-24">
-              <h2 className="text-3xl font-bold tracking-tight text-foreground sm:text-4xl">
-                Ready to manage your team{"'"}s finances?
-              </h2>
-              <p className="mx-auto mt-4 max-w-xl text-lg text-muted-foreground">
-                Start with a free group and upgrade as your team grows. 
-                No credit card required.
-              </p>
-              <div className="mt-8">
+              <div className="mt-8 flex flex-col gap-3 sm:flex-row">
                 <Link href="/create-group">
-                  <Button size="lg" className="gap-2 bg-primary text-primary-foreground hover:bg-primary/90">
-                    <Users className="h-4 w-4" />
-                    Create a Group
+                  <Button size="lg" className="w-full gap-2 rounded-xl sm:w-auto">
+                    Launch your workspace
+                    <ArrowRight className="h-4 w-4" />
+                  </Button>
+                </Link>
+                <Link href="/dashboard">
+                  <Button size="lg" variant="outline" className="w-full rounded-xl sm:w-auto">
+                    Explore dashboard
                   </Button>
                 </Link>
               </div>
-            </div>
-          </div>
-        </div>
-      </section>
 
-      {/* Footer */}
-      <footer className="border-t border-border py-8">
-        <div className="mx-auto max-w-6xl px-4 lg:px-8">
-          <div className="flex flex-col items-center justify-between gap-4 sm:flex-row">
-            <div className="flex items-center gap-2">
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary">
-                <Ghost className="h-4 w-4 text-primary-foreground" />
+              <div className="mt-10 grid gap-4 sm:grid-cols-3">
+                {metrics.map((metric) => (
+                  <div key={metric.label} className="section-card px-4 py-4">
+                    <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
+                      {metric.label}
+                    </p>
+                    <p className="mt-3 text-lg font-semibold text-foreground">{metric.value}</p>
+                  </div>
+                ))}
               </div>
-              <span className="font-semibold text-foreground">GhostLedger</span>
             </div>
-            <p className="text-sm text-muted-foreground">
-              Built with privacy in mind.
-            </p>
+
+            <div className="section-card relative overflow-hidden px-6 py-6 sm:px-8">
+              <div className="absolute inset-x-0 top-0 h-32 bg-[radial-gradient(circle_at_top,_rgba(111,227,182,0.22),_transparent_68%)]" />
+              <div className="relative">
+                <div className="flex items-center justify-between rounded-2xl border border-white/8 bg-white/[0.04] px-4 py-3">
+                  <div>
+                    <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
+                      Workspace snapshot
+                    </p>
+                    <p className="mt-2 text-lg font-semibold text-foreground">Core Operations Fund</p>
+                  </div>
+                  <div className="rounded-2xl bg-primary/12 p-3">
+                    <TrendingUp className="h-5 w-5 text-primary" />
+                  </div>
+                </div>
+
+                <div className="mt-5 grid gap-4 sm:grid-cols-2">
+                  <div className="rounded-2xl border border-white/8 bg-black/10 p-4">
+                    <p className="text-sm text-muted-foreground">Available balance</p>
+                    <p className="mt-3 text-3xl font-semibold text-foreground">$42,800</p>
+                    <p className="mt-2 text-sm text-primary">Within monthly target</p>
+                  </div>
+                  <div className="rounded-2xl border border-white/8 bg-black/10 p-4">
+                    <p className="text-sm text-muted-foreground">Recurring plans due</p>
+                    <p className="mt-3 text-3xl font-semibold text-foreground">3</p>
+                    <p className="mt-2 text-sm text-muted-foreground">Next run in 2 days</p>
+                  </div>
+                </div>
+
+                <div className="mt-5 space-y-3 rounded-2xl border border-white/8 bg-white/[0.03] p-4">
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-muted-foreground">AI analyst</span>
+                    <span className="rounded-full border border-primary/25 bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary">
+                      Ready
+                    </span>
+                  </div>
+                  <p className="text-sm leading-6 text-foreground">
+                    “Spending is concentrated in tooling and contractor payouts. You still have 28% of
+                    the budget available this month.”
+                  </p>
+                </div>
+              </div>
+            </div>
           </div>
-        </div>
-      </footer>
+        </section>
+
+        <section className="mx-auto max-w-7xl px-4 pb-24 sm:px-6 lg:px-8">
+          <div className="mb-8 max-w-2xl">
+            <span className="page-header-eyebrow">Why teams adopt it</span>
+            <h2 className="mt-4 text-3xl font-semibold text-foreground sm:text-4xl">
+              A product surface designed to feel operational, not experimental.
+            </h2>
+          </div>
+          <div className="grid gap-5 lg:grid-cols-3">
+            {proofPoints.map((item) => (
+              <div key={item.title} className="section-card px-6 py-6">
+                <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-primary/12">
+                  <item.icon className="h-5 w-5 text-primary" />
+                </div>
+                <h3 className="mt-5 text-xl font-semibold text-foreground">{item.title}</h3>
+                <p className="mt-3 text-sm leading-6 text-muted-foreground">{item.description}</p>
+              </div>
+            ))}
+          </div>
+        </section>
+      </main>
     </div>
   )
 }

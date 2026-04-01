@@ -1,22 +1,26 @@
 "use client"
 
+import { useState } from "react"
 import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
 import {
-  LayoutDashboard,
-  Receipt,
-  Lightbulb,
-  Settings,
+  ChevronRight,
   CreditCard,
   Ghost,
-  Users,
+  LayoutDashboard,
+  Lightbulb,
   Menu,
+  Receipt,
+  Settings,
+  ShieldCheck,
+  Sparkles,
+  Users,
   X,
 } from "lucide-react"
-import { Button } from "@/components/ui/button"
 import { useAuth } from "@/components/providers/auth-provider"
+import { useGroup } from "@/components/providers/group-provider"
+import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
-import { useState } from "react"
 
 const navItems = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
@@ -30,6 +34,7 @@ export function Sidebar() {
   const pathname = usePathname()
   const router = useRouter()
   const { user, logout } = useAuth()
+  const { group } = useGroup()
   const [mobileOpen, setMobileOpen] = useState(false)
 
   const handleLogout = async () => {
@@ -39,84 +44,131 @@ export function Sidebar() {
 
   return (
     <>
-      {/* Mobile menu button */}
       <Button
         variant="ghost"
         size="icon"
-        className="fixed left-4 top-4 z-50 lg:hidden"
-        onClick={() => setMobileOpen(!mobileOpen)}
+        className="fixed left-4 top-4 z-50 border border-border/70 bg-card/85 backdrop-blur lg:hidden"
+        onClick={() => setMobileOpen((open) => !open)}
       >
         {mobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
       </Button>
 
-      {/* Mobile overlay */}
-      {mobileOpen && (
+      {mobileOpen ? (
         <div
-          className="fixed inset-0 z-40 bg-background/80 backdrop-blur-sm lg:hidden"
+          className="fixed inset-0 z-40 bg-background/75 backdrop-blur-sm lg:hidden"
           onClick={() => setMobileOpen(false)}
         />
-      )}
+      ) : null}
 
-      {/* Sidebar */}
       <aside
         className={cn(
-          "fixed inset-y-0 left-0 z-40 flex w-64 flex-col border-r border-border bg-sidebar transition-transform lg:translate-x-0",
+          "glass-panel fixed inset-y-3 left-3 z-40 flex w-[calc(100%-1.5rem)] max-w-[18.5rem] flex-col overflow-hidden rounded-[1.75rem] transition-transform lg:inset-y-4 lg:left-4 lg:w-72 lg:translate-x-0",
           mobileOpen ? "translate-x-0" : "-translate-x-full"
         )}
       >
-        {/* Logo */}
-        <div className="flex h-16 items-center gap-2 border-b border-sidebar-border px-6">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary">
-            <Ghost className="h-5 w-5 text-primary-foreground" />
+        <div className="absolute inset-x-0 top-0 h-28 bg-[radial-gradient(circle_at_top,_rgba(111,227,182,0.22),_transparent_72%)]" />
+
+        <div className="relative border-b border-sidebar-border/70 px-6 pb-5 pt-6">
+          <div className="flex items-center gap-3">
+            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-primary shadow-[0_10px_30px_rgba(111,227,182,0.35)]">
+              <Ghost className="h-5 w-5 text-primary-foreground" />
+            </div>
+            <div>
+              <p className="text-base font-semibold text-sidebar-foreground">GhostLedger</p>
+              <p className="text-xs text-sidebar-foreground/65">Private finance workspace</p>
+            </div>
           </div>
-          <span className="text-lg font-semibold text-sidebar-foreground">
-            GhostLedger
-          </span>
+
+          <div className="mt-6 rounded-2xl border border-white/8 bg-white/[0.03] p-4">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <p className="text-[11px] uppercase tracking-[0.22em] text-sidebar-foreground/55">
+                  Active workspace
+                </p>
+                <p className="mt-2 line-clamp-2 text-sm font-medium text-sidebar-foreground">
+                  {group?.name ?? "Workspace"}
+                </p>
+              </div>
+              <div className="rounded-full border border-primary/30 bg-primary/10 p-2">
+                <ShieldCheck className="h-4 w-4 text-primary" />
+              </div>
+            </div>
+            <div className="mt-4 flex items-center justify-between rounded-xl border border-white/6 bg-black/10 px-3 py-2">
+              <div>
+                <p className="text-xs text-sidebar-foreground/55">Secure session</p>
+                <p className="text-sm font-medium text-sidebar-foreground">
+                  {user?.name ?? "Signed in"}
+                </p>
+              </div>
+              <ChevronRight className="h-4 w-4 text-sidebar-foreground/35" />
+            </div>
+          </div>
         </div>
 
-        {/* Navigation */}
         <nav className="flex-1 space-y-1 p-4">
           {navItems.map((item) => {
             const isActive = pathname === item.href
+
             return (
               <Link
                 key={item.href}
                 href={item.href}
                 onClick={() => setMobileOpen(false)}
                 className={cn(
-                  "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors",
+                  "flex items-center gap-3 rounded-2xl px-4 py-3 text-sm font-medium transition-all",
                   isActive
-                    ? "bg-sidebar-accent text-sidebar-primary"
-                    : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground"
+                    ? "bg-white/[0.06] text-sidebar-foreground shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]"
+                    : "text-sidebar-foreground/70 hover:bg-white/[0.04] hover:text-sidebar-foreground"
                 )}
               >
-                <item.icon className="h-5 w-5" />
-                {item.label}
+                <span
+                  className={cn(
+                    "flex h-9 w-9 items-center justify-center rounded-xl border border-transparent",
+                    isActive ? "bg-primary/12 text-primary" : "bg-white/[0.03] text-sidebar-foreground/65"
+                  )}
+                >
+                  <item.icon className="h-4 w-4" />
+                </span>
+                <span className="flex-1">{item.label}</span>
+                {isActive ? <ChevronRight className="h-4 w-4 text-sidebar-foreground/35" /> : null}
               </Link>
             )
           })}
         </nav>
 
-        {/* Create Group CTA */}
-        <div className="border-t border-sidebar-border p-4">
-          <p className="mb-3 truncate text-xs text-sidebar-foreground/70">
-            {user?.email}
-          </p>
+        <div className="border-t border-sidebar-border/70 p-4">
+          <div className="mb-4 rounded-2xl border border-primary/15 bg-primary/8 p-4">
+            <div className="flex items-start gap-3">
+              <div className="rounded-xl bg-primary/12 p-2">
+                <Sparkles className="h-4 w-4 text-primary" />
+              </div>
+              <div>
+                <p className="text-sm font-medium text-sidebar-foreground">Start a new workspace</p>
+                <p className="mt-1 text-xs leading-5 text-sidebar-foreground/60">
+                  Spin up another ledger for a team, cohort, or operating budget.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <p className="mb-3 truncate text-xs text-sidebar-foreground/55">{user?.email}</p>
+
           <Link href="/create-group">
-            <Button className="w-full gap-2" onClick={() => setMobileOpen(false)}>
+            <Button className="w-full gap-2 rounded-xl" onClick={() => setMobileOpen(false)}>
               <Users className="h-4 w-4" />
-              Create Group
+              New workspace
             </Button>
           </Link>
+
           <Button
             variant="ghost"
-            className="mt-2 w-full justify-start text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground"
+            className="mt-2 w-full justify-start rounded-xl text-sidebar-foreground/70 hover:bg-white/[0.04] hover:text-sidebar-foreground"
             onClick={() => {
               setMobileOpen(false)
               void handleLogout()
             }}
           >
-            Sign Out
+            Sign out
           </Button>
         </div>
       </aside>

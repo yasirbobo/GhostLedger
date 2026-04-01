@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react"
 import { CreditCard, Gauge, Rocket, Sparkles, Users } from "lucide-react"
 import { AppShell } from "@/components/layout/app-shell"
+import { PageHeader } from "@/components/layout/page-header"
 import { useGroup } from "@/components/providers/group-provider"
 import { canManageWorkspace } from "@/lib/authz/group-permissions"
 import type { BillingPlan, GroupBilling } from "@/lib/types"
@@ -107,14 +108,12 @@ export function BillingPageClient() {
 
   return (
     <AppShell>
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold tracking-tight text-foreground lg:text-3xl">
-          Billing
-        </h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Choose the plan that matches your team size and operating complexity.
-        </p>
-      </div>
+      <div className="space-y-6">
+      <PageHeader
+        eyebrow="Workspace plan"
+        title="Billing"
+        description="Choose the operating tier that fits your team size, recurring workflow volume, and admin surface area."
+      />
 
       <div className="grid gap-6 lg:grid-cols-[1.15fr_0.85fr]">
         <div className="grid gap-4">
@@ -125,7 +124,7 @@ export function BillingPageClient() {
             return (
               <Card
                 key={plan.id}
-                className={`border-border bg-card ${isCurrent ? "ring-1 ring-primary/40" : ""}`}
+                className={`section-card border-0 bg-transparent shadow-none ${isCurrent ? "ring-1 ring-primary/40" : ""}`}
               >
                 <CardHeader>
                   <div className="flex items-start justify-between gap-4">
@@ -179,7 +178,7 @@ export function BillingPageClient() {
         </div>
 
         <div className="space-y-6">
-          <Card className="border-border bg-card">
+          <Card className="section-card border-0 bg-transparent shadow-none">
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-base font-semibold text-foreground">
                 <CreditCard className="h-4 w-4 text-primary" />
@@ -192,7 +191,7 @@ export function BillingPageClient() {
             <CardContent className="space-y-4">
               {billing ? (
                 <>
-                  <div className="rounded-lg border border-border bg-secondary/20 p-4">
+                  <div className="rounded-2xl border border-border/70 bg-secondary/20 p-4">
                     <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
                       Workspace
                     </p>
@@ -202,7 +201,7 @@ export function BillingPageClient() {
                       <Badge variant="outline">{billing.status}</Badge>
                     </div>
                   </div>
-                  <div className="rounded-lg border border-border bg-secondary/20 p-4">
+                  <div className="rounded-2xl border border-border/70 bg-secondary/20 p-4">
                     <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
                       Renewal
                     </p>
@@ -213,14 +212,14 @@ export function BillingPageClient() {
                   </div>
                 </>
               ) : (
-                <div className="rounded-lg border border-border bg-secondary/20 p-4 text-sm text-muted-foreground">
+                <div className="rounded-2xl border border-border/70 bg-secondary/20 p-4 text-sm text-muted-foreground">
                   {isLoading ? "Loading billing..." : "Billing data is unavailable."}
                 </div>
               )}
             </CardContent>
           </Card>
 
-          <Card className="border-border bg-card">
+          <Card className="section-card border-0 bg-transparent shadow-none">
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-base font-semibold text-foreground">
                 <Users className="h-4 w-4 text-primary" />
@@ -255,7 +254,7 @@ export function BillingPageClient() {
                   />
                 </>
               ) : (
-                <div className="rounded-lg border border-border bg-secondary/20 p-4 text-sm text-muted-foreground">
+                <div className="rounded-2xl border border-border/70 bg-secondary/20 p-4 text-sm text-muted-foreground">
                   Usage will appear here once billing loads.
                 </div>
               )}
@@ -265,6 +264,7 @@ export function BillingPageClient() {
             </CardContent>
           </Card>
         </div>
+      </div>
       </div>
     </AppShell>
   )
@@ -280,7 +280,7 @@ function UsageRow({
   limit: number | null
 }) {
   return (
-    <div className="flex items-center justify-between rounded-lg border border-border bg-secondary/20 px-4 py-3">
+    <div className="flex items-center justify-between rounded-2xl border border-border/70 bg-secondary/20 px-4 py-3">
       <p className="text-sm text-foreground">{label}</p>
       <p className="text-sm text-muted-foreground">
         {value}
