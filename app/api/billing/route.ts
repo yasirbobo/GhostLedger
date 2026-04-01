@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server"
-import { canManageWorkspace } from "@/lib/authz/group-permissions"
+import { canManageBilling } from "@/lib/authz/group-permissions"
 import { getSessionUser } from "@/lib/auth/get-session-user"
 import { getAllBillingPlans, getGroupBilling, updateGroupBillingPlan } from "@/lib/billing/store"
 import { getErrorMessage, getErrorStatus } from "@/lib/http/errors"
@@ -59,7 +59,7 @@ export async function PATCH(request: Request) {
     }
 
     const group = await getGroup(payload.data.groupId, user.email)
-    if (!canManageWorkspace(group)) {
+    if (!canManageBilling(group)) {
       return NextResponse.json(
         { error: "You do not have permission to manage billing." },
         { status: 403 }

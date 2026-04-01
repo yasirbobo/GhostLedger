@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server"
 import { getSessionUser } from "@/lib/auth/get-session-user"
-import { canEditTransactions } from "@/lib/authz/group-permissions"
+import { canCreateTransactions } from "@/lib/authz/group-permissions"
 import { canCreateRecurringPlan, getRecurringLimitMessage } from "@/lib/billing/limits"
 import { getGroupBilling } from "@/lib/billing/store"
 import { getErrorMessage, getErrorStatus } from "@/lib/http/errors"
@@ -31,7 +31,7 @@ export async function POST(
     }
 
     const existingGroup = await getGroup(groupId, user.email)
-    if (!canEditTransactions(existingGroup)) {
+    if (!canCreateTransactions(existingGroup)) {
       return NextResponse.json(
         { error: "You do not have permission to add transactions." },
         { status: 403 }

@@ -1,6 +1,14 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises"
 import path from "node:path"
 import { randomUUID } from "node:crypto"
+import {
+  canAssignRole,
+  canChangeRole,
+  canCreateTransactions,
+  canModifyTransactions,
+  canRemoveRole,
+  normalizeGroupRole,
+} from "./authz/group-permissions"
 import { buildEncryptedValue } from "./group-analytics"
 import { isValidEmail } from "./auth-store"
 import { mockGroup } from "./mock-data"
@@ -235,6 +243,16 @@ function getStoredRole(group: StoredGroup, requesterEmail: string): GroupRole {
   return group.memberRoles?.[normalizedRequesterEmail] ?? "member"
 }
 
+function getStoredAccessRole(group: StoredGroup, memberEmail: string): GroupRole {
+  const normalizedMemberEmail = normalizeEmail(memberEmail)
+
+  if (group.ownerEmail === normalizedMemberEmail) {
+    return "owner"
+  }
+
+  return normalizeGroupRole(group.memberRoles?.[normalizedMemberEmail])
+}
+
 function getAccessibleGroups(store: GroupStore, requesterEmail?: string) {
   return Object.values(store.groups).filter((group) =>
     hasAccess(group, requesterEmail)
@@ -347,7 +365,7 @@ export async function addTransaction(
   }
 
   const requesterRole = getStoredRole(group, requesterEmail)
-  if (requesterRole === "viewer") {
+  if (!canCreateTransactions({ ...group, currentUserRole: requesterRole })) {
     throw new Error("Insufficient permissions")
   }
 
@@ -416,7 +434,7 @@ export async function deleteTransaction(
   }
 
   const requesterRole = getStoredRole(group, requesterEmail)
-  if (requesterRole === "viewer") {
+  if (!canModifyTransactions({ ...group, currentUserRole: requesterRole })) {
     throw new Error("Insufficient permissions")
   }
 
@@ -478,7 +496,7 @@ export async function updateTransaction(
   }
 
   const requesterRole = getStoredRole(group, requesterEmail)
-  if (requesterRole === "viewer") {
+  if (!canModifyTransactions({ ...group, currentUserRole: requesterRole })) {
     throw new Error("Insufficient permissions")
   }
 

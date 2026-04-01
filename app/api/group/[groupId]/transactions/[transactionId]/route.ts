@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server"
 import { getSessionUser } from "@/lib/auth/get-session-user"
-import { canEditTransactions } from "@/lib/authz/group-permissions"
+import { canModifyTransactions } from "@/lib/authz/group-permissions"
 import { getErrorMessage, getErrorStatus } from "@/lib/http/errors"
 import { deleteTransaction, getGroup, updateTransaction } from "@/lib/repositories/groups"
 import { updateTransactionSchema } from "@/lib/validation/group"
@@ -21,7 +21,7 @@ export async function DELETE(
 
     const { groupId, transactionId } = await context.params
     const existingGroup = await getGroup(groupId, user.email)
-    if (!canEditTransactions(existingGroup)) {
+    if (!canModifyTransactions(existingGroup)) {
       return NextResponse.json(
         { error: "You do not have permission to delete transactions." },
         { status: 403 }
@@ -63,7 +63,7 @@ export async function PATCH(
 
     const { groupId, transactionId } = await context.params
     const existingGroup = await getGroup(groupId, user.email)
-    if (!canEditTransactions(existingGroup)) {
+    if (!canModifyTransactions(existingGroup)) {
       return NextResponse.json(
         { error: "You do not have permission to update transactions." },
         { status: 403 }

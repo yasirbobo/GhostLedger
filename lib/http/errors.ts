@@ -20,10 +20,12 @@ export function getErrorStatus(error: unknown) {
     error.message === "An account with this email already exists." ||
     error.message === "Invalid email or password." ||
     error.message === "Invite has expired." ||
+    error.message === "Invite is no longer active." ||
     error.message === "Accepted invites cannot be resent." ||
     error.message === "Accepted invites cannot be revoked." ||
     error.message === "Owner access cannot be changed." ||
     error.message === "Owner access cannot be removed." ||
+    error.message === "You cannot change your own access." ||
     error.message === "You cannot remove your own access."
   ) {
     return 400
