@@ -13,7 +13,7 @@ import { AppShell } from "@/components/layout/app-shell"
 import { PageHeader } from "@/components/layout/page-header"
 import { useGroup } from "@/components/providers/group-provider"
 import { Button } from "@/components/ui/button"
-import { canEditTransactions } from "@/lib/authz/group-permissions"
+import { canCreateTransactions } from "@/lib/authz/group-permissions"
 import {
   getSpendingCategories,
   getTotalContributions,
@@ -22,7 +22,7 @@ import {
 
 export function DashboardPageClient() {
   const { group, addTransaction } = useGroup()
-  const canAddTransactions = canEditTransactions(group)
+  const canAddTransactions = canCreateTransactions(group)
   const totalContributions = getTotalContributions(group)
   const totalExpenses = getTotalExpenses(group)
   const remainingBudget = Math.max(group.budgetMonthly - totalExpenses, 0)

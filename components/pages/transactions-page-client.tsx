@@ -20,7 +20,7 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
-import { canEditTransactions } from "@/lib/authz/group-permissions"
+import { canModifyTransactions } from "@/lib/authz/group-permissions"
 import type { Member, Transaction } from "@/lib/types"
 
 function formatPrivateAmount(amount: number): string {
@@ -43,7 +43,7 @@ export function TransactionsPageClient() {
   const [startDate, setStartDate] = useState("")
   const [endDate, setEndDate] = useState("")
   const { group, updateTransaction, deleteTransaction } = useGroup()
-  const canManageTransactions = canEditTransactions(group)
+  const canManageTransactions = canModifyTransactions(group)
 
   const filteredTransactions = group.transactions.filter((transaction) => {
     const matchesSearch =

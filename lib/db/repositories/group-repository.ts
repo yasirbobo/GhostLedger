@@ -920,7 +920,13 @@ function canManageInvite(
     return false
   }
 
-  const requesterRole = getWorkspaceRole(invite.group, requesterEmail)
+  const normalizedRequesterEmail = requesterEmail.trim().toLowerCase()
+  const requesterRole =
+    invite.group.owner.email === normalizedRequesterEmail
+      ? "owner"
+      : normalizeGroupRole(
+          invite.group.members.find((member) => member.email === normalizedRequesterEmail)?.role
+        )
   const targetRole = normalizeGroupRole(invite.role)
 
   return canRemoveRole(requesterRole, targetRole)
